@@ -1,0 +1,76 @@
+---
+title: The title of your Semesterproject
+subtitle: A subtle subtitle
+author: Firstname1 Lastname1 and Firstname2 Lastname2
+output: html
+---
+
+
+<!-- You can add  your R Code with Code chunks-->
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+# You can set chunk options individually per code chunk, as was done with this
+# code chunk.
+
+# echo: false           hides the code from the generated output
+# warning: false        hides warnings from the generated output
+# message: false        hides messages from the generated output
+
+# To apply the setting for all code chunks, add the options to the yaml header of the document (in between the ---) without the preceeding "#|".
+
+```
+
+
+## Abstract
+
+<!-- the following is just a placeholder text, remove it!-->
+Society philosophy merciful selfish sexuality depths overcome madness. Morality free faithful merciful ubermensch good oneself convictions intentions eternal-return. Spirit against christianity right selfish evil ultimate pious hatred ocean dead insofar noble. Madness pious madness christianity prejudice horror grandeur god strong. Ideal will philosophy reason pious society burying ascetic right society philosophy. Society will evil intentions against philosophy against holiest victorious.
+
+
+## Introduction
+
+<!-- the following is just a placeholder text, remove it!-->
+Against holiest pinnacle mountains merciful ideal society play disgust will ubermensch ultimate pinnacle victorious. Snare value law gains battle pious intentions revaluation strong. Insofar snare faith ideal oneself.
+
+```{r}
+library(ggplot2)
+
+# Include tables with the function "kable"
+
+knitr::kable(head(mtcars))
+```
+
+<!-- the following is just a placeholder text, remove it!-->
+Revaluation evil aversion ultimate decrepit disgust decrepit eternal-return noble faithful pinnacle. Truth ascetic inexpedient decrepit free. Ubermensch free merciful mountains endless fearful decieve reason mountains will decrepit strong selfish depths. Overcome faith snare gains oneself transvaluation.
+
+```{r}
+# include plots automatically
+
+ggplot(mtcars, aes(cyl, disp)) +
+  geom_point()
+
+```
+
+
+
+
+
+## Material and Methods
+
+<!-- the following is just a placeholder text, remove it!-->
+Christianity revaluation value battle faithful marvelous society derive free truth. Right battle mountains superiority grandeur ascetic grandeur merciful. Derive against intentions burying salvation ocean. Right intentions dead victorious ideal spirit evil ultimate joy. Holiest spirit value oneself contradict aversion christianity ultimate convictions war christian.
+
+## Results
+
+<!-- the following is just a placeholder text, remove it!-->
+Philosophy oneself passion play fearful self noble zarathustra deceptions sexuality. Endless ocean of oneself dead ocean. Selfish decrepit.
+
+## Discussion
+
+<!-- the following is just a placeholder text, remove it!-->
+Justice convictions spirit sexuality insofar free marvelous joy. Revaluation virtues mountains spirit fearful sexuality love endless. Society intentions will noble burying aversion moral. Insofar passion ultimate mountains of play gains depths joy christian reason christianity mountains dead. Mountains christianity play war holiest ascetic passion oneself derive grandeur. Against pinnacle hope joy burying ocean of horror disgust victorious faithful justice suicide.
+
