@@ -3,6 +3,8 @@ title: The title of your Semesterproject
 subtitle: A subtle subtitle
 author: Firstname1 Lastname1 and Firstname2 Lastname2
 output: html
+editor_options: 
+  chunk_output_type: console
 ---
 
 <!-- You can add  your R Code with Code chunks-->
@@ -60,6 +62,295 @@ ggplot(mtcars, aes(cyl, disp)) +
 <!-- the following is just a placeholder text, remove it!-->
 
 Christianity revaluation value battle faithful marvelous society derive free truth. Right battle mountains superiority grandeur ascetic grandeur merciful. Derive against intentions burying salvation ocean. Right intentions dead victorious ideal spirit evil ultimate joy. Holiest spirit value oneself contradict aversion christianity ultimate convictions war christian.
+
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+
+#data preperation
+
+library("readr")
+library("dplyr")
+library("sf")
+library("ggplot2")
+library("dplyr")
+library("zoo")
+library("tmap")
+library("lubridate")
+library("tidyr")
+
+
+data <- read_delim("posmo_data/posmo_v1.csv")
+head(data)
+
+data <- select(data, datetime, transport_mode, lon_x, lat_y) # Keep only the necessary columns
+
+data <- st_as_sf(data, coords = c("lon_x","lat_y"), crs = 4326) |>  #cs is transformed to 2056
+  st_transform(2056)
+
+data_coord <- st_coordinates(data) #coordinates are extracted
+data <- cbind(data, data_coord) #coordinates are binded in separate columns
+
+data <- data |> 
+  filter(as.Date(datetime) < "2023-04-14" | as.Date(datetime) > "2023-04-17") #delet days which I wasn't in switzerland. Could that be done by cutting all trajectories to switzerland?
+```
+
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+#data pre-processing
+
+#choose two single days for trial:
+data_1 <- data |>
+    filter(as.Date(datetime) == "2023-04-27") # a second interesting date: "2023-04-21"
+
+# Step 1: calculating timelag
+
+data_1 <- data_1 |>
+  mutate(timelag = as.numeric(difftime(lead(datetime), datetime, units = "secs"))) 
+
+# Step 2: Identify rows with gaps (definied as more than 10s)
+
+data_1 <- data_1 %>%
+  mutate(gap = timelag > 10)
+
+# Step 3: Assign segment IDs according to gaps
+
+data_1 <- data_1 %>%
+  mutate(segment_id = cumsum(gap))
+
+# Step 4: Calculate moving window sum of step lengths within 1 minute for each segment
+#maybe it would be better to work with speed?
+
+data_1 <- data_1 %>%
+  group_by(segment_id) %>%
+  mutate(
+    step_length = sqrt((lead(X, 1) - X) ^ 2 + (lead(Y, 1) - Y) ^ 2),
+    sum_step_length = rollsum(step_length, k = 12, fill = NA, align = "right", na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Step 5: Create the "static" column based on the movement threshold
+
+data_1 <- data_1 %>%
+  mutate(static = if_else(is.na(sum_step_length) | sum_step_length < 25, T, F))
+
+#plot for a first look:
+
+ggplot(data_1, aes(X, Y, color=static))+ 
+  geom_point()+
+  geom_path()+
+  coord_equal()
+
+# Step 6: split up to smaller segments according to static/non-static 
+
+rle_id <- function(vec) {
+    x <- rle(vec)$lengths
+    as.factor(rep(seq_along(x), times = x))
+} #function to assign unique ID for each segment
+
+data_1 <- data_1 |>
+    mutate(segment_id = rle_id(static))
+
+# Step 7: filter out all non-static points
+
+data_1 <- data_1 |> 
+    filter(!static)
+
+# plot for a look
+
+ggplot(data_1,aes(X, Y, color = segment_id)) +
+    geom_path() +
+    geom_point() +
+    coord_fixed() +
+    theme(legend.position = "none")
+
+# Step 8: filter out small segments (definied as less than 2mins or less than 200m)
+
+data_1 <- data_1 |> 
+  group_by(segment_id) |> 
+  filter(sum(timelag, na.rm=T)>120) |> 
+  filter(sum(step_length, na.rm=T)>200)
+
+# plot for a lok
+
+ggplot(data_1,aes(X, Y, color = segment_id)) +
+    geom_path() +
+    geom_point() +
+    coord_fixed() +
+    theme(legend.position = "none")
+
+# plot for a last time
+
+tmap_mode("view") 
+tm_shape(data_1)+
+  tm_dots(col="segment_id")
+
+```
+
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+# implementing on whole data-set
+
+data <- data |>
+  mutate(timelag = as.numeric(difftime(lead(datetime), datetime, units = "secs"))) 
+
+data <- data %>%
+  mutate(gap = timelag > 10)
+
+data <- data %>%
+  mutate(segment_id = cumsum(gap))
+
+data <- data %>%
+  group_by(segment_id) %>%
+  mutate(
+    step_length = sqrt((lead(X, 1) - X) ^ 2 + (lead(Y, 1) - Y) ^ 2),
+    sum_step_length = rollsum(step_length, k = 12, fill = NA, align = "right", na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+data <- data %>%
+  mutate(static = if_else(is.na(sum_step_length) | sum_step_length < 25, T, F))
+
+ggplot(data, aes(X, Y, color = static)) + # Plot for a first look
+  geom_point() +
+  geom_path() +
+  coord_equal()
+
+rle_id <- function(vec) {
+  x <- rle(vec)$lengths
+  as.factor(rep(seq_along(x), times = x))
+} # Function to assign a unique ID for each segment
+
+data <- data |>
+  mutate(segment_id = rle_id(static))
+
+data <- data |> 
+  filter(!static)
+
+ggplot(data, aes(X, Y, color = segment_id)) +
+  geom_path() +
+  geom_point() +
+  coord_fixed() +
+  theme(legend.position = "none")
+
+data <- data |> 
+  group_by(segment_id) |> 
+  filter(sum(timelag, na.rm = T) > 120) |> 
+  filter(sum(step_length, na.rm = T) > 200)
+
+ggplot(data, aes(X, Y, color = segment_id)) +
+  geom_path() +
+  geom_point() +
+  coord_fixed() +
+  theme_bw()+
+  theme(legend.position = "none")
+
+ggplot(data, aes(X, Y)) +
+  geom_path() +
+  geom_point() +
+  coord_fixed() +
+  theme_bw()+
+  theme(legend.position = "none")
+  
+```
+
+
+```{r}
+#calculating speed etc.
+
+data <- data |> 
+  mutate(speed = step_length/timelag) 
+
+
+data_smry <- data |> 
+  filter(timelag != 0) |> 
+  group_by(segment_id, transport_mode) |> 
+  summarise(mean_speed = mean(speed, na.rm=T),
+            max_speed = max(speed,na.rm=T),
+            min_speed = min(speed,na.rm=T))
+
+
+pivot_longer(data_smry, cols = c("mean_speed","max_speed","min_speed")) |> 
+ggplot(aes(x=transport_mode, y=value, fill=transport_mode))+
+  geom_boxplot()+
+  facet_wrap(~name, scales="free")
+
+data_smry |> 
+  filter(transport_mode == "Bike" | transport_mode == "Walk") |> 
+  pivot_longer(cols = c("mean_speed","max_speed","min_speed")) |> 
+  ggplot(aes(x=transport_mode, y=value, fill=transport_mode))+
+  geom_boxplot()+
+  facet_wrap(~name, scales="free")+
+  theme_bw()+
+  theme(
+    legend.position = "none",
+    axis.title.x = element_blank(),
+  )
+  
+
+
+```
+
+```{r}
+#ploting some problems
+
+data_2 <- data |> 
+filter(as.Date(datetime) == "2023-05-23")
+
+ggplot(data_2,aes(X, Y, color = segment_id)) +
+    geom_path() +
+    geom_point() +
+    coord_fixed() +
+    theme(legend.position = "none")
+
+data$transport_mode <- as.factor(data$transport_mode)
+data_smry2 <- data |> 
+  filter(timelag != 0) |> 
+  group_by(segment_id) |>
+  summarise(mean_speed = mean(speed, na.rm=T),
+            max_speed = max(speed,na.rm=T),
+            min_speed = min(speed,na.rm=T),
+            transport_mx = levels(transport_mode)[which.max(table(transport_mode))])
+
+
+pivot_longer(data_smry2, cols = c("mean_speed","max_speed","min_speed")) |> 
+ggplot(aes(x=transport_mx, y=value, fill=transport_mx))+
+  geom_boxplot()+
+  facet_wrap(~name, scales="free")+
+  theme_bw()+
+  theme(
+    axis.title.x = element_blank(),
+  )
+
+data_smry2 |> 
+  filter(transport_mx == "Bike" | transport_mx == "Walk") |> 
+  pivot_longer(cols = c("mean_speed","max_speed","min_speed")) |> 
+  ggplot(aes(x=transport_mx, y=value, fill=transport_mx))+
+  geom_boxplot()+
+  facet_wrap(~name, scales="free")
+  
+data |> 
+filter(as.Date(datetime) == "2023-04-29") |> 
+ggplot(aes(X, Y, color = segment_id)) +
+    geom_path() +
+    geom_point() +
+    coord_fixed() +
+    theme(legend.position = "none")
+```
+
+
+```
 
 ## Results
 
