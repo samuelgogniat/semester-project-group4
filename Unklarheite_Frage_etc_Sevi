@@ -1,0 +1,12 @@
+# Step 4: Calculate moving window sum of step lengths within 1 minute for each segment
+#maybe it would be better to work with speed?
+
+data_1 <- data_1 %>%
+  group_by(segment_id) %>%
+  mutate(
+    step_length = sqrt((lead(X, 1) - X) ^ 2 + (lead(Y, 1) - Y) ^ 2),
+    sum_step_length = rollsum(step_length, k = 12, fill = NA, align = "right", na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+Eventuell chöntemer da vorher scho d Ziitabständ runde? Oder hemmer gseit mer lönds will sich 5 sec ned guet runde lönd?

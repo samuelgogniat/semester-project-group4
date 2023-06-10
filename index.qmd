@@ -350,6 +350,53 @@ ggplot(aes(X, Y, color = segment_id)) +
 ```
 
 
+SEVI: TLM 
+```{r}
+?tmap_mode
+
+layers <- st_layers("posmo_data/SWISSTLM3D_2023_LV95_LN02.gpkg")
+
+roads <- read_sf("posmo_data/SWISSTLM3D_2023_LV95_LN02.gpkg", layer = "tlm_strassen_strasse")
+stops <- read_sf("posmo_data/SWISSTLM3D_2023_LV95_LN02.gpkg", layer = "tlm_oev_haltestelle")
+rail <- read_sf("posmo_data/SWISSTLM3D_2023_LV95_LN02.gpkg", layer = "tlm_oev_eisenbahn")
+swiss <- read_sf("posmo_data/swissBOUNDARIES3D_1_4_TLM_LANDESGEBIET.shp")
+canton <- read_sf("posmo_data/swissBOUNDARIES3D_1_4_TLM_KANTONSGEBIET.shp")
+plot(canton)
+plot(swiss)
+
+zurich <- canton |> 
+  filter(NAME=="Zürich")
+
+plot(zurich)
+
+zurich <- zurich |> 
+  select(c(NAME, geometry))
+
+plot(zurich)
+roads <- st_transform(roads, st_crs(zurich))
+stops <- st_transform(stops, st_crs(zurich))
+rail <- st_transform(rail, st_crs(zurich))
+
+intersect_roads <- st_intersection(roads, zurich)
+intersect_stops <- st_intersection(stops, zurich)
+intersect_rail <- st_intersection(rail, zurich)
+
+plot(intersect_rail$geom)
+plot(intersect_roads$geom)
+plot(intersect_stops$geom)
+
+intersect_roads <- intersect_roads |> 
+  select(c(objektart, verkehrsbedeutung, geom))
+st_write(intersect_roads,"posmo_data/intersect_roads.gpkg")
+
+intersect_rail <- intersect_rail |> 
+  select(c(objektart, auf_strasse, verkehrsmittel, geom))
+st_write(intersect_rail,"posmo_data/intersect_rail.gpkg")
+
+intersect_stops <- intersect_stops |> 
+  select(c(objektart, name, geom))
+st_write(intersect_stops,"posmo_data/intersect_stops.gpkg")
+
 ```
 
 ## Results
