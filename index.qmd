@@ -387,15 +387,15 @@ plot(intersect_stops$geom)
 
 intersect_roads <- intersect_roads |> 
   select(c(objektart, verkehrsbedeutung, geom))
-st_write(intersect_roads,"posmo_data/intersect_roads.gpkg")
+st_write(intersect_roads,"intersect_roads.gpkg")
 
 intersect_rail <- intersect_rail |> 
   select(c(objektart, auf_strasse, verkehrsmittel, geom))
-st_write(intersect_rail,"posmo_data/intersect_rail.gpkg")
+st_write(intersect_rail,"intersect_rail.gpkg")
 
 intersect_stops <- intersect_stops |> 
   select(c(objektart, name, geom))
-st_write(intersect_stops,"posmo_data/intersect_stops.gpkg")
+st_write(intersect_stops,"intersect_stops.gpkg")
 
 ```
 
