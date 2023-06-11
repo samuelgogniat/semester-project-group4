@@ -619,7 +619,39 @@ ggplot(data_horgen, aes(X, Y, color = segment_id)) +
   theme_bw()+
   theme(legend.position = "none")
 
-#Weiter mit Berechnungen
+#Speed
+data_swiss <- data_swiss|> 
+  mutate(speed = step_length/timelag) 
+
+data_zurich <- data_zurich|> 
+  mutate(speed = step_length/timelag) 
+
+data_horgen<- data_horgen|> 
+  mutate(speed = step_length/timelag) 
+
+#Mean, max und min speed
+data_swiss_smry <- data_swiss |> 
+  filter(timelag != 0) |> 
+  group_by(segment_id, transport_mode) |> 
+  summarise(mean_speed = mean(speed, na.rm=T),
+            max_speed = max(speed,na.rm=T),
+            min_speed = min(speed,na.rm=T))
+
+data_zurich_smry <- data_zurich |> 
+  filter(timelag != 0) |> 
+  group_by(segment_id, transport_mode) |> 
+  summarise(mean_speed = mean(speed, na.rm=T),
+            max_speed = max(speed,na.rm=T),
+            min_speed = min(speed,na.rm=T))
+
+data_horgen_smry <- data_horgen |> 
+  filter(timelag != 0) |> 
+  group_by(segment_id, transport_mode) |> 
+  summarise(mean_speed = mean(speed, na.rm=T),
+            max_speed = max(speed,na.rm=T),
+            min_speed = min(speed,na.rm=T))
+
+
 ```
 
 ## Results
