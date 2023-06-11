@@ -63,7 +63,6 @@ ggplot(mtcars, aes(cyl, disp)) +
 
 Christianity revaluation value battle faithful marvelous society derive free truth. Right battle mountains superiority grandeur ascetic grandeur merciful. Derive against intentions burying salvation ocean. Right intentions dead victorious ideal spirit evil ultimate joy. Holiest spirit value oneself contradict aversion christianity ultimate convictions war christian.
 
-
 ```{r}
 #| echo: false
 #| warning: false
@@ -97,7 +96,6 @@ data <- cbind(data, data_coord) #coordinates are binded in separate columns
 data <- data |> 
   filter(as.Date(datetime) < "2023-04-14" | as.Date(datetime) > "2023-04-17") #delet days which I wasn't in switzerland. Could that be done by cutting all trajectories to switzerland?
 ```
-
 
 ```{r}
 #| echo: false
@@ -194,7 +192,6 @@ tm_shape(data_1)+
 
 ```
 
-
 ```{r}
 #| echo: false
 #| warning: false
@@ -264,7 +261,6 @@ ggplot(data, aes(X, Y)) +
   theme(legend.position = "none")
   
 ```
-
 
 ```{r}
 #calculating speed etc.
@@ -349,30 +345,35 @@ ggplot(aes(X, Y, color = segment_id)) +
     theme(legend.position = "none")
 ```
 
+## SEVI: TLM
 
-SEVI: TLM 
+Load datas, preparing and cropping them to canton of zuerich
+
 ```{r}
-?tmap_mode
 
-layers <- st_layers("posmo_data/SWISSTLM3D_2023_LV95_LN02.gpkg")
+#layers <- st_layers("background_data/SWISSTLM3D_2023_LV95_LN02.gpkg")
 
-roads <- read_sf("posmo_data/SWISSTLM3D_2023_LV95_LN02.gpkg", layer = "tlm_strassen_strasse")
-stops <- read_sf("posmo_data/SWISSTLM3D_2023_LV95_LN02.gpkg", layer = "tlm_oev_haltestelle")
-rail <- read_sf("posmo_data/SWISSTLM3D_2023_LV95_LN02.gpkg", layer = "tlm_oev_eisenbahn")
-swiss <- read_sf("posmo_data/swissBOUNDARIES3D_1_4_TLM_LANDESGEBIET.shp")
-canton <- read_sf("posmo_data/swissBOUNDARIES3D_1_4_TLM_KANTONSGEBIET.shp")
+#roads <- read_sf("background_data/SWISSTLM3D_2023_LV95_LN02.gpkg", layer = "tlm_strassen_strasse")
+#stops <- read_sf("background_data/SWISSTLM3D_2023_LV95_LN02.gpkg", layer = "tlm_oev_haltestelle")
+#rail <- read_sf("background_data/SWISSTLM3D_2023_LV95_LN02.gpkg", layer = "tlm_oev_eisenbahn")
+swiss <- read_sf("background_data/swissBOUNDARIES3D_1_4_TLM_LANDESGEBIET.shp")
+canton <- read_sf("background_data/swissBOUNDARIES3D_1_4_TLM_KANTONSGEBIET.shp")
+district <- read_sf("background_data/swissBOUNDARIES3D_1_4_TLM_BEZIRKSGEBIET.shp")
 plot(canton)
 plot(swiss)
 
 zurich <- canton |> 
   filter(NAME=="Zürich")
-
-plot(zurich)
-
 zurich <- zurich |> 
   select(c(NAME, geometry))
-
 plot(zurich)
+
+horgen <- district |> 
+  filter(NAME=="Horgen" & BEZIRK_TEI==1)
+horgen <- horgen |> 
+  select(NAME, geometry)
+plot(horgen)
+
 roads <- st_transform(roads, st_crs(zurich))
 stops <- st_transform(stops, st_crs(zurich))
 rail <- st_transform(rail, st_crs(zurich))
@@ -387,16 +388,238 @@ plot(intersect_stops$geom)
 
 intersect_roads <- intersect_roads |> 
   select(c(objektart, verkehrsbedeutung, geom))
-st_write(intersect_roads,"intersect_roads.gpkg")
+st_write(intersect_roads,"output_files/intersect_roads.gpkg")
 
 intersect_rail <- intersect_rail |> 
   select(c(objektart, auf_strasse, verkehrsmittel, geom))
-st_write(intersect_rail,"intersect_rail.gpkg")
+st_write(intersect_rail,"output_files/intersect_rail.gpkg")
 
 intersect_stops <- intersect_stops |> 
   select(c(objektart, name, geom))
-st_write(intersect_stops,"intersect_stops.gpkg")
+st_write(intersect_stops,"output_files/intersect_stops.gpkg")
 
+intersect_roads <- read_sf("output_files/intersect_roads.gpkg")
+intersect_rail <- read_sf("output_files/intersect_rail.gpkg")
+intersect_stops <- read_sf("output_files/intersect_stops.gpkg")
+
+```
+
+## Intersect data before filtering data
+
+nrow(data_swiss) ist etwas klein....vielleicht nachprüfen oder mit Sämi besprechen
+
+```{r}
+data <- read_delim("posmo_data/posmo_v1.csv")
+head(data)
+
+data <- select(data, datetime, transport_mode, lon_x, lat_y) # Keep only the necessary columns
+
+data <- st_as_sf(data, coords = c("lon_x","lat_y"), crs = 4326) |>  #cs is transformed to 2056
+  st_transform(2056)
+
+data_coord <- st_coordinates(data) #coordinates are extracted
+data <- cbind(data, data_coord) #coordinates are binded in separate columns
+
+swiss <- read_sf("background_data_small/swissBOUNDARIES3D_1_4_TLM_LANDESGEBIET.shp")
+canton <- read_sf("background_data_Small/swissBOUNDARIES3D_1_4_TLM_KANTONSGEBIET.shp")
+district <- read_sf("background_data_small/swissBOUNDARIES3D_1_4_TLM_BEZIRKSGEBIET.shp")
+
+zurich <- canton |> 
+  filter(NAME=="Zürich")
+zurich <- zurich |> 
+  select(c(NAME, geometry))
+
+horgen <- district |> 
+  filter(NAME=="Horgen" & BEZIRK_TEI==1)
+horgen <- horgen |> 
+  select(NAME, geometry)
+
+data <- st_transform(data, "+init=EPSG:2056")
+st_crs(swiss) <-  "+init=EPSG:2056"
+
+zurich <- st_transform(zurich, "+init=EPSG:2056")
+horgen <- st_transform(horgen, "+init=EPSG:2056")
+
+
+data_swiss <- read_delim("output_files/data_swiss.csv")
+#data_swiss <- st_intersection(data, swiss)
+#write_delim(data_swiss, "output_files/data_swiss.csv")
+
+
+data_zurich <- st_intersection(data, zurich)
+
+data_horgen <- st_intersection(data, horgen)
+
+
+#Timelag
+data_swiss <- data_swiss |>
+  mutate(timelag = as.numeric(difftime(lead(datetime), datetime, units = "secs")))
+
+data_zurich <- data_zurich |>
+  mutate(timelag = as.numeric(difftime(lead(datetime), datetime, units = "secs")))
+
+data_horgen <- data_horgen |>
+  mutate(timelag = as.numeric(difftime(lead(datetime), datetime, units = "secs")))
+
+#Gap
+data_swiss <- data_swiss %>%
+  mutate(gap = timelag > 10)
+
+data_zurich <- data_zurich %>%
+  mutate(gap = timelag > 10)
+
+data_horgen <- data_horgen %>%
+  mutate(gap = timelag > 10)
+
+
+#Segment ID
+data_swiss <- data_swiss %>%
+  mutate(segment_id = cumsum(gap))
+
+data_zurich <- data_zurich %>%
+  mutate(segment_id = cumsum(gap))
+
+data_horgen <- data_horgen %>%
+  mutate(segment_id = cumsum(gap))
+
+
+#Steplength
+data_swiss <- data_swiss %>%
+  group_by(segment_id) %>%
+  mutate(
+    step_length = sqrt((lead(X, 1) - X) ^ 2 + (lead(Y, 1) - Y) ^ 2),
+    sum_step_length = rollsum(step_length, k = 12, fill = NA, align = "right", na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+data_zurich <- data_zurich %>%
+  group_by(segment_id) %>%
+  mutate(
+    step_length = sqrt((lead(X, 1) - X) ^ 2 + (lead(Y, 1) - Y) ^ 2),
+    sum_step_length = rollsum(step_length, k = 12, fill = NA, align = "right", na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+data_horgen <- data_horgen %>%
+  group_by(segment_id) %>%
+  mutate(
+    step_length = sqrt((lead(X, 1) - X) ^ 2 + (lead(Y, 1) - Y) ^ 2),
+    sum_step_length = rollsum(step_length, k = 12, fill = NA, align = "right", na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+#Static
+data_swiss <- data_swiss %>%
+  mutate(static = if_else(is.na(sum_step_length) | sum_step_length < 25, T, F))
+ggplot(data_swiss, aes(X, Y)) +
+  geom_path() +
+  geom_point() +
+  coord_fixed() +
+  theme_bw()+
+  theme(legend.position = "none")
+
+data_zurich <- data_zurich %>%
+  mutate(static = if_else(is.na(sum_step_length) | sum_step_length < 25, T, F))
+ggplot(data_zurich, aes(X, Y)) +
+  geom_path() +
+  geom_point() +
+  coord_fixed() +
+  theme_bw()+
+  theme(legend.position = "none")
+
+data_horgen <- data_horgen %>%
+  mutate(static = if_else(is.na(sum_step_length) | sum_step_length < 25, T, F))
+ggplot(data_horgen, aes(X, Y)) +
+  geom_path() +
+  geom_point() +
+  coord_fixed() +
+  theme_bw()+
+  theme(legend.position = "none")
+
+#RLE ID Function
+rle_id <- function(vec) {
+  x <- rle(vec)$lengths
+  as.factor(rep(seq_along(x), times = x))
+} 
+
+#Segment ID
+data_swiss <- data_swiss |>
+  mutate(segment_id = rle_id(static))
+
+data_zurich <- data_zurich |>
+  mutate(segment_id = rle_id(static))
+
+data_horgen <- data_horgen |>
+  mutate(segment_id = rle_id(static))
+
+#Filter Movement
+data_swiss <- data_swiss |> 
+  filter(!static)
+
+data_zurich <- data_zurich |> 
+  filter(!static)
+
+data_horgen <- data_horgen |> 
+  filter(!static)
+
+#Filter short segment IDs
+data_swiss <- data_swiss |> 
+  group_by(segment_id) |> 
+  filter(sum(timelag, na.rm = T) > 120) |> 
+  filter(sum(step_length, na.rm = T) > 200)
+
+data_zurich <- data_zurich |> 
+  group_by(segment_id) |> 
+  filter(sum(timelag, na.rm = T) > 120) |> 
+  filter(sum(step_length, na.rm = T) > 200)
+
+data_horgen <- data_horgen |> 
+  group_by(segment_id) |> 
+  filter(sum(timelag, na.rm = T) > 120) |> 
+  filter(sum(step_length, na.rm = T) > 200)
+
+#Plot
+
+ggplot(data_swiss, aes(X, Y, color = segment_id)) +
+  geom_path() +
+  geom_point() +
+  coord_fixed() +
+  theme(legend.position = "none")
+
+ggplot(data_zurich, aes(X, Y, color = segment_id)) +
+  geom_path() +
+  geom_point() +
+  coord_fixed() +
+  theme(legend.position = "none")
+
+ggplot(data_horgen, aes(X, Y, color = segment_id)) +
+  geom_path() +
+  geom_point() +
+  coord_fixed() +
+  theme(legend.position = "none")
+
+ggplot(data_swiss, aes(X, Y, color = segment_id)) +
+  geom_path() +
+  geom_point() +
+  coord_fixed() +
+  theme_bw()+
+  theme(legend.position = "none")
+
+ggplot(data_zurich, aes(X, Y, color = segment_id)) +
+  geom_path() +
+  geom_point() +
+  coord_fixed() +
+  theme_bw()+
+  theme(legend.position = "none")
+
+ggplot(data_horgen, aes(X, Y, color = segment_id)) +
+  geom_path() +
+  geom_point() +
+  coord_fixed() +
+  theme_bw()+
+  theme(legend.position = "none")
+
+#Weiter mit Berechnungen
 ```
 
 ## Results
@@ -410,5 +633,3 @@ Philosophy oneself passion play fearful self noble zarathustra deceptions sexual
 <!-- the following is just a placeholder text, remove it!-->
 
 Justice convictions spirit sexuality insofar free marvelous joy. Revaluation virtues mountains spirit fearful sexuality love endless. Society intentions will noble burying aversion moral. Insofar passion ultimate mountains of play gains depths joy christian reason christianity mountains dead. Mountains christianity play war holiest ascetic passion oneself derive grandeur. Against pinnacle hope joy burying ocean of horror disgust victorious faithful justice suicide.
-
-## Sevis... Änderung :) 
