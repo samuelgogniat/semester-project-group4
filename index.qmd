@@ -409,16 +409,16 @@ intersect_stops <- read_sf("output_files/intersect_stops.gpkg")
 nrow(data_swiss) ist etwas klein....vielleicht nachprüfen oder mit Sämi besprechen
 
 ```{r}
-data <- read_delim("posmo_data/posmo_v1.csv")
-head(data)
+data_sevi <- read_delim("posmo_data/posmo_v1.csv")
+head(data_sevi)
 
-data <- select(data, datetime, transport_mode, lon_x, lat_y) # Keep only the necessary columns
+data_sevi <- select(data_sevi, datetime, transport_mode, lon_x, lat_y) # Keep only the necessary columns
 
-data <- st_as_sf(data, coords = c("lon_x","lat_y"), crs = 4326) |>  #cs is transformed to 2056
+data_sevi <- st_as_sf(data_sevi, coords = c("lon_x","lat_y"), crs = 4326) |>  #cs is transformed to 2056
   st_transform(2056)
 
-data_coord <- st_coordinates(data) #coordinates are extracted
-data <- cbind(data, data_coord) #coordinates are binded in separate columns
+data_coord_sevi <- st_coordinates(data_sevi) #coordinates are extracted
+data_sevi <- cbind(data_sevi, data_coord_sevi) #coordinates are binded in separate columns
 
 swiss <- read_sf("background_data_small/swissBOUNDARIES3D_1_4_TLM_LANDESGEBIET.shp")
 canton <- read_sf("background_data_Small/swissBOUNDARIES3D_1_4_TLM_KANTONSGEBIET.shp")
@@ -434,7 +434,7 @@ horgen <- district |>
 horgen <- horgen |> 
   select(NAME, geometry)
 
-data <- st_transform(data, "+init=EPSG:2056")
+data <- st_transform(data_sevi, "+init=EPSG:2056")
 st_crs(swiss) <-  "+init=EPSG:2056"
 
 zurich <- st_transform(zurich, "+init=EPSG:2056")
@@ -446,9 +446,9 @@ data_swiss <- read_delim("output_files/data_swiss.csv")
 #write_delim(data_swiss, "output_files/data_swiss.csv")
 
 
-data_zurich <- st_intersection(data, zurich)
+data_zurich <- st_intersection(data_sevi, zurich)
 
-data_horgen <- st_intersection(data, horgen)
+data_horgen <- st_intersection(data_sevi, horgen)
 
 
 #Timelag
