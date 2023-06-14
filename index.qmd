@@ -19,6 +19,7 @@ editor_options:
 
 # echo: false           hides the code from the generated output
 # warning: false        hides warnings from the generated output
+
 # message: false        hides messages from the generated output
 
 # To apply the setting for all code chunks, add the options to the yaml header of the document (in between the ---) without the preceeding "#|".
@@ -115,29 +116,37 @@ data_1 <- data_1 |>
 
 # Step 2: Identify rows with gaps (definied as more than 10s)
 
-data_1 <- data_1 %>%
+data_1 <- data_1 |> 
   mutate(gap = timelag > 10)
 
 # Step 3: Assign segment IDs according to gaps
 
-data_1 <- data_1 %>%
+data_1 <- data_1 |> 
   mutate(segment_id = cumsum(gap))
 
-# Step 4: Calculate moving window sum of step lengths within 1 minute for each segment
-#maybe it would be better to work with speed?
+# Step 4: Calculate moving window of stepMean (window of 6 fixes: 30s)
+
+data_1 <- data_1 |> 
+  group_by(segment_id) |>
+    mutate(
+    stepMean = rowMeans(
+      cbind(
+        sqrt((lag(X, 3) - X)^2 + (lag(Y, 3) - Y)^2),
+        sqrt((lag(X, 2) - X)^2 + (lag(Y, 2) - Y)^2),
+        sqrt((lag(X, 1) - X)^2 + (lag(Y, 1) - Y)^2),
+        sqrt((X - lead(X, 1))^2 + (Y - lead(Y, 1))^2),
+        sqrt((X - lead(X, 2))^2 + (Y - lead(Y, 2))^2),
+        sqrt((X - lead(X, 3))^2 + (Y - lead(Y, 3))^2)
+      )
+    )
+  )
+  
+
+# Step 5: Create the "static" column. StepMean below 2m per 5s -> static
+
 
 data_1 <- data_1 %>%
-  group_by(segment_id) %>%
-  mutate(
-    step_length = sqrt((lead(X, 1) - X) ^ 2 + (lead(Y, 1) - Y) ^ 2),
-    sum_step_length = rollsum(step_length, k = 12, fill = NA, align = "right", na.rm = TRUE)
-  ) %>%
-  ungroup()
-
-# Step 5: Create the "static" column based on the movement threshold
-
-data_1 <- data_1 %>%
-  mutate(static = if_else(is.na(sum_step_length) | sum_step_length < 25, T, F))
+  mutate(static = if_else(is.na(stepMean) | stepMean < 2, T, F))
 
 #plot for a first look:
 
@@ -154,6 +163,7 @@ rle_id <- function(vec) {
 } #function to assign unique ID for each segment
 
 data_1 <- data_1 |>
+   ungroup() |> 
     mutate(segment_id = rle_id(static))
 
 # Step 7: filter out all non-static points
@@ -173,8 +183,9 @@ ggplot(data_1,aes(X, Y, color = segment_id)) +
 
 data_1 <- data_1 |> 
   group_by(segment_id) |> 
-  filter(sum(timelag, na.rm=T)>120) |> 
-  filter(sum(step_length, na.rm=T)>200)
+  mutate(steplength = sqrt((X - lead(X, 1)) ^ 2 + (Y - lead(Y, 1)) ^ 2)) |> 
+  filter(sum(steplength, na.rm=T)>200) |> 
+  filter(sum(timelag, na.rm=T)>120) 
 
 # plot for a lok
 
@@ -192,157 +203,179 @@ tm_shape(data_1)+
 
 ```
 
+
 ```{r}
 #| echo: false
 #| warning: false
 #| message: false
 
-# implementing on whole data-set
+#apply on whole dataset
+
 
 data <- data |>
-  mutate(timelag = as.numeric(difftime(lead(datetime), datetime, units = "secs"))) 
-
-data <- data %>%
-  mutate(gap = timelag > 10)
-
-data <- data %>%
-  mutate(segment_id = cumsum(gap))
-
-data <- data %>%
-  group_by(segment_id) %>%
   mutate(
-    step_length = sqrt((lead(X, 1) - X) ^ 2 + (lead(Y, 1) - Y) ^ 2),
-    sum_step_length = rollsum(step_length, k = 12, fill = NA, align = "right", na.rm = TRUE)
-  ) %>%
-  ungroup()
-
-data <- data %>%
-  mutate(static = if_else(is.na(sum_step_length) | sum_step_length < 25, T, F))
-
-ggplot(data, aes(X, Y, color = static)) + # Plot for a first look
-  geom_point() +
-  geom_path() +
-  coord_equal()
-
-rle_id <- function(vec) {
-  x <- rle(vec)$lengths
-  as.factor(rep(seq_along(x), times = x))
-} # Function to assign a unique ID for each segment
-
-data <- data |>
-  mutate(segment_id = rle_id(static))
+    timelag = as.numeric(difftime(lead(datetime), datetime, units = "secs")), 
+    gap = timelag > 10,
+    segment_id = cumsum(gap)
+  )
 
 data <- data |> 
-  filter(!static)
+  group_by(segment_id) |>
+    mutate(
+    stepMean = rowMeans(
+      cbind(
+        sqrt((lag(X, 3) - X)^2 + (lag(Y, 3) - Y)^2),
+        sqrt((lag(X, 2) - X)^2 + (lag(Y, 2) - Y)^2),
+        sqrt((lag(X, 1) - X)^2 + (lag(Y, 1) - Y)^2),
+        sqrt((X - lead(X, 1))^2 + (Y - lead(Y, 1))^2),
+        sqrt((X - lead(X, 2))^2 + (Y - lead(Y, 2))^2),
+        sqrt((X - lead(X, 3))^2 + (Y - lead(Y, 3))^2)
+      )
+    ),
+    static = if_else(is.na(stepMean) | stepMean < 2, T, F)
+  )
+  
 
-ggplot(data, aes(X, Y, color = segment_id)) +
-  geom_path() +
-  geom_point() +
-  coord_fixed() +
-  theme(legend.position = "none")
+rle_id <- function(vec) {
+    x <- rle(vec)$lengths
+    as.factor(rep(seq_along(x), times = x))
+} #function to assign unique ID for each segment
+
+data <- data |>
+   ungroup() |> 
+    mutate(segment_id = rle_id(static)) |> 
+    filter(!static)
 
 data <- data |> 
   group_by(segment_id) |> 
-  filter(sum(timelag, na.rm = T) > 120) |> 
-  filter(sum(step_length, na.rm = T) > 200)
+  mutate(steplength = sqrt((X - lead(X, 1)) ^ 2 + (Y - lead(Y, 1)) ^ 2)) |> 
+  filter(sum(steplength, na.rm=T)>200) |> 
+  filter(sum(timelag, na.rm=T)>120) 
 
-ggplot(data, aes(X, Y, color = segment_id)) +
-  geom_path() +
-  geom_point() +
-  coord_fixed() +
-  theme_bw()+
-  theme(legend.position = "none")
+ggplot(data,aes(X, Y, color = segment_id)) +
+    geom_path() +
+    geom_point() +
+    coord_fixed() +
+    theme(legend.position = "none")
 
-ggplot(data, aes(X, Y)) +
-  geom_path() +
-  geom_point() +
-  coord_fixed() +
-  theme_bw()+
-  theme(legend.position = "none")
-  
 ```
 
+
+
 ```{r}
-#calculating speed etc.
+#calculate moving parameters
 
 data <- data |> 
-  mutate(speed = step_length/timelag) 
-
-
-data_smry <- data |> 
-  filter(timelag != 0) |> 
-  group_by(segment_id, transport_mode) |> 
-  summarise(mean_speed = mean(speed, na.rm=T),
-            max_speed = max(speed,na.rm=T),
-            min_speed = min(speed,na.rm=T))
-
-
-pivot_longer(data_smry, cols = c("mean_speed","max_speed","min_speed")) |> 
-ggplot(aes(x=transport_mode, y=value, fill=transport_mode))+
-  geom_boxplot()+
-  facet_wrap(~name, scales="free")
-
-data_smry |> 
-  filter(transport_mode == "Bike" | transport_mode == "Walk") |> 
-  pivot_longer(cols = c("mean_speed","max_speed","min_speed")) |> 
-  ggplot(aes(x=transport_mode, y=value, fill=transport_mode))+
-  geom_boxplot()+
-  facet_wrap(~name, scales="free")+
-  theme_bw()+
-  theme(
-    legend.position = "none",
-    axis.title.x = element_blank(),
+  group_by(segment_id) |> 
+  mutate(
+    speed = {
+      step_minus2 <- sqrt((lag(X, 2) - X) ^ 2 + (lag(Y, 2) - Y) ^ 2)
+      time_minus2 <- abs(as.numeric(difftime(lag(datetime, 2), datetime, units = "secs")))
+      step_plus2 <- sqrt((X - lead(X, 2)) ^ 2 + (Y - lead(Y, 2)) ^ 2)
+      time_plus2 <- as.numeric(difftime(lead(datetime, 2), datetime, units = "secs"))
+      (step_minus2/time_minus2 + step_plus2/time_plus2) / 2
+    },
+    acc = {
+      speed_minus2 <- speed - lag(speed, 2)
+      speed_plus2 <- lead(speed, 2) - speed
+      time_minus2 <- abs(as.numeric(difftime(lag(datetime, 2), datetime, units = "secs")))
+      time_plus2 <- as.numeric(difftime(lead(datetime, 2), datetime, units = "secs"))
+      (speed_minus2/time_minus2 + speed_plus2/time_plus2) / 2   
+      },
+    sin = {
+      d_minus1 <- sqrt((lag(X, 1) - X) ^ 2 + (lag(Y, 1) - Y) ^ 2)
+      d_minus2 <- sqrt((lag(X, 2) - lag(X, 1)) ^ 2 + (lag(Y, 2) - lag(Y, 1)) ^ 2)
+      d_plus1  <- sqrt((X - lead(X, 1))^2 + (Y - lead(Y, 1))^2)
+      d_plus2  <- sqrt((lead(X, 1) - lead(X, 2))^2 + (lead(Y,1) - lead(Y, 2))^2)
+      d_straight <- sqrt((lag(X, 2) - lead(X, 2))^2 + (lag(Y,2) - lead(Y, 2))^2)
+      (d_minus1 + d_minus2 + d_plus1 + d_plus2)/d_straight
+    }
   )
-  
 
+#filter with sinousity
+
+data <- data |> 
+  group_by(segment_id) |> 
+  filter(mean(sin, na.rm=T)<2) 
 
 ```
 
 ```{r}
-#ploting some problems
+#alocated nearest road
 
-data_2 <- data |> 
-filter(as.Date(datetime) == "2023-05-23")
+#reading in road+rail files
+roads <- read_sf("background_data/swisstlmregio_2022_2056.shp/swissTLMRegio_Product_LV95/Transportation/swissTLMRegio_Road.shp")
+roads <-  select(roads, OBJVAL, geometry)
+head(roads) 
 
-ggplot(data_2,aes(X, Y, color = segment_id)) +
-    geom_path() +
-    geom_point() +
-    coord_fixed() +
-    theme(legend.position = "none")
+rails <- read_sf("background_data/swisstlmregio_2022_2056.shp/swissTLMRegio_Product_LV95/Transportation/swissTLMRegio_Railway.shp")
+rails <-  select(rails, OBJVAL, geometry)
+head(rails)
+
+#bind them together
+background <- rbind(roads, rails)
+
+#make the join
+data <- st_join(data, background, join = st_nearest_feature)
+
+#visualisation part of it to see how good it is
+district <- read_sf("background_data_small/swissBOUNDARIES3D_1_4_TLM_BEZIRKSGEBIET.shp")
+horgen <- district |> 
+  filter(NAME=="Horgen" & BEZIRK_TEI==1)
+horgen <- horgen |> 
+  select(NAME, geometry)
+horgen <- st_transform(horgen, st_crs(data))
+
+df_near <- st_intersection(horgen, df_near)
+background <- st_intersection(horgen, background)
+
+tmap_mode("view") 
+tm_shape(df_near)+
+  tm_dots(col="OBJVAL")+
+tm_shape(background)+
+  tm_lines(col="OBJVAL") #still rather bad
+
+#how to improve? use better background data, but then how to handle big dataset?
+
+```
+
+```{r}
+#summarize all
+
+#calculate summary
 
 data$transport_mode <- as.factor(data$transport_mode)
-data_smry2 <- data |> 
-  filter(timelag != 0) |> 
-  group_by(segment_id) |>
-  summarise(mean_speed = mean(speed, na.rm=T),
+data$OBJVAL <- as.factor(data$OBJVAL)
+data_smry <- data |> 
+  group_by(segment_id) |> 
+  summarise(
+            mean_speed = mean(speed, na.rm=T),
             max_speed = max(speed,na.rm=T),
             min_speed = min(speed,na.rm=T),
-            transport_mx = levels(transport_mode)[which.max(table(transport_mode))])
+            mean_acc = mean(acc, na.rm=T),
+            max_acc = max(acc,na.rm=T),
+            min_acc = min(acc,na.rm=T),
+            mean_sin = mean(sin, na.rm=T),
+            max_sin = max(sin,na.rm=T),
+            min_sin = min(sin,na.rm=T),
+            transport_mode = levels(transport_mode)[which.max(table(transport_mode))],
+            nearest_route = levels(OBJVAL)[which.max(table(OBJVAL))]
 
+  )
 
-pivot_longer(data_smry2, cols = c("mean_speed","max_speed","min_speed")) |> 
-ggplot(aes(x=transport_mx, y=value, fill=transport_mx))+
+#plot for EDA
+
+data_smry_long <- pivot_longer(data_smry, 
+                           cols = -c("segment_id","transport_mode","geometry"),
+                           names_to = "parameter") 
+
+ggplot(data_smry_long, aes(x=transport_mode, y=value, fill=transport_mode))+
   geom_boxplot()+
-  facet_wrap(~name, scales="free")+
+  facet_wrap(~parameter, scales="free_y")+
   theme_bw()+
   theme(
     axis.title.x = element_blank(),
   )
-
-data_smry2 |> 
-  filter(transport_mx == "Bike" | transport_mx == "Walk") |> 
-  pivot_longer(cols = c("mean_speed","max_speed","min_speed")) |> 
-  ggplot(aes(x=transport_mx, y=value, fill=transport_mx))+
-  geom_boxplot()+
-  facet_wrap(~name, scales="free")
-  
-data |> 
-filter(as.Date(datetime) == "2023-04-29") |> 
-ggplot(aes(X, Y, color = segment_id)) +
-    geom_path() +
-    geom_point() +
-    coord_fixed() +
-    theme(legend.position = "none")
 ```
 
 ## SEVI: TLM
@@ -652,7 +685,12 @@ data_horgen_smry <- data_horgen |>
             min_speed = min(speed,na.rm=T))
 
 
+?sf
+
+
 ```
+
+
 
 ## Results
 
