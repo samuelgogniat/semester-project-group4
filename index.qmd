@@ -184,8 +184,7 @@ ggplot(data_1,aes(X, Y, color = segment_id)) +
 data_1 <- data_1 |> 
   group_by(segment_id) |> 
   mutate(steplength = sqrt((X - lead(X, 1)) ^ 2 + (Y - lead(Y, 1)) ^ 2)) |> 
-  filter(sum(steplength, na.rm=T)>200) |> 
-  filter(sum(timelag, na.rm=T)>120) 
+  filter(sum(steplength, na.rm=T)>200) 
 
 # plot for a lok
 
@@ -249,8 +248,7 @@ data <- data |>
 data <- data |> 
   group_by(segment_id) |> 
   mutate(steplength = sqrt((X - lead(X, 1)) ^ 2 + (Y - lead(Y, 1)) ^ 2)) |> 
-  filter(sum(steplength, na.rm=T)>200) |> 
-  filter(sum(timelag, na.rm=T)>120) 
+  filter(sum(steplength, na.rm=T)>200) 
 
 ggplot(data,aes(X, Y, color = segment_id)) +
     geom_path() +
@@ -301,41 +299,21 @@ data <- data |>
 ```
 
 ```{r}
-#alocated nearest road
+#allocate nearest road using SWISSTLM3d
+roads <- read_sf("background_data/swisstlm3d_2023-03_2056_5728.shp/TLM_STRASSEN/swissTLM3D_TLM_STRASSE.shp")
+roads <- select(roads, OBJEKTART, geometry)
+rails <- read_sf("background_data/swisstlm3d_2023-03_2056_5728.shp/TLM_OEV/swissTLM3D_TLM_EISENBAHN.shp")
+rails <- select(rails, OBJEKTART, geometry)
+boats <- read_sf("background_data/swisstlm3d_2023-03_2056_5728.shp/TLM_OEV/swissTLM3D_TLM_SCHIFFFAHRT.shp")
+boats <- select(boats, OBJEKTART, geometry)
 
-#reading in road+rail files
-roads <- read_sf("background_data/swisstlmregio_2022_2056.shp/swissTLMRegio_Product_LV95/Transportation/swissTLMRegio_Road.shp")
-roads <-  select(roads, OBJVAL, geometry)
-head(roads) 
+background_data <- rbind(roads, rails, boats)
+background_data <- st_transform(background_data, 2056)
+data <- st_join(data, background_data, join = st_nearest_feature)
 
-rails <- read_sf("background_data/swisstlmregio_2022_2056.shp/swissTLMRegio_Product_LV95/Transportation/swissTLMRegio_Railway.shp")
-rails <-  select(rails, OBJVAL, geometry)
-head(rails)
 
-#bind them together
-background <- rbind(roads, rails)
+#visualization part of it to see how good it is #not working yet
 
-#make the join
-data <- st_join(data, background, join = st_nearest_feature)
-
-#visualisation part of it to see how good it is
-district <- read_sf("background_data_small/swissBOUNDARIES3D_1_4_TLM_BEZIRKSGEBIET.shp")
-horgen <- district |> 
-  filter(NAME=="Horgen" & BEZIRK_TEI==1)
-horgen <- horgen |> 
-  select(NAME, geometry)
-horgen <- st_transform(horgen, st_crs(data))
-
-df_near <- st_intersection(horgen, df_near)
-background <- st_intersection(horgen, background)
-
-tmap_mode("view") 
-tm_shape(df_near)+
-  tm_dots(col="OBJVAL")+
-tm_shape(background)+
-  tm_lines(col="OBJVAL") #still rather bad
-
-#how to improve? use better background data, but then how to handle big dataset?
 
 ```
 
@@ -345,7 +323,7 @@ tm_shape(background)+
 #calculate summary
 
 data$transport_mode <- as.factor(data$transport_mode)
-data$OBJVAL <- as.factor(data$OBJVAL)
+data$OBJVAL <- as.factor(data$OBJEKTART)
 data_smry <- data |> 
   group_by(segment_id) |> 
   summarise(
@@ -359,9 +337,14 @@ data_smry <- data |>
             max_sin = max(sin,na.rm=T),
             min_sin = min(sin,na.rm=T),
             transport_mode = levels(transport_mode)[which.max(table(transport_mode))],
-            nearest_route = levels(OBJVAL)[which.max(table(OBJVAL))]
+            nearest_route = levels(OBJEKTART)[which.max(table(OBJEKTART))]
 
   )
+
+
+#export for classification
+
+write.csv(data_smry, "output_files/data_smry.csv")
 
 #plot for EDA
 
