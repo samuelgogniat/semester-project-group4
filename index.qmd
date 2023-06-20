@@ -202,7 +202,6 @@ tm_shape(data_1)+
 
 ```
 
-
 ```{r}
 #| echo: false
 #| warning: false
@@ -257,8 +256,6 @@ ggplot(data,aes(X, Y, color = segment_id)) +
     theme(legend.position = "none")
 
 ```
-
-
 
 ```{r}
 #calculate moving parameters
@@ -359,6 +356,19 @@ ggplot(data_smry_long, aes(x=transport_mode, y=value, fill=transport_mode))+
   theme(
     axis.title.x = element_blank(),
   )
+```
+
+```{r}
+data_smry <- read_delim("output_files/data_smry.csv", delim = ",")
+
+#First allocation = Walk
+data_smry$travel_mode_det <- ifelse(data_smry$max_speed < 2, "Walk", NA)
+
+#Bike
+data_smry$travel_mode_det <- ifelse(is.na(data_smry$travel_mode_det) & data_smry$max_speed < 20 & data_smry$mean_speed < 7, "Bike", data_smry$travel_mode_det)
+
+#Rail
+data_smry$travel_mode_det <- ifelse(data_smry$nearest_route == "rail", "rail", data_smry$travel_mode_det)
 ```
 
 ## SEVI: TLM
@@ -672,8 +682,6 @@ data_horgen_smry <- data_horgen |>
 
 
 ```
-
-
 
 ## Results
 
