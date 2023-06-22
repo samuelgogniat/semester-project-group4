@@ -2,13 +2,12 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.2.475">
+<meta name="generator" content="quarto-1.2.335">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="author" content="Firstname1 Lastname1 and Firstname2 Lastname2">
 
-<title>The title of your Semesterproject</title>
+<title>Implementation of a Analysis Tool for Travel Mode Detection in R</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -109,8 +108,8 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">The title of your Semesterproject</h1>
-<p class="subtitle lead">A subtle subtitle</p>
+<h1 class="title">Implementation of a Analysis Tool for Travel Mode Detection in R</h1>
+<p class="subtitle lead">a Deciscion-Tree Approach</p>
 </div>
 
 
@@ -120,7 +119,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
     <div>
     <div class="quarto-title-meta-heading">Author</div>
     <div class="quarto-title-meta-contents">
-             <p>Firstname1 Lastname1 and Firstname2 Lastname2 </p>
+             <p>Severin Aicher and Samuel Gogniat </p>
           </div>
   </div>
     
@@ -131,176 +130,163 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 </header>
 
-<!-- You can add  your R Code with Code chunks-->
-<div class="cell">
-
-</div>
 <section id="abstract" class="level2">
 <h2 class="anchored" data-anchor-id="abstract">Abstract</h2>
-<!-- the following is just a placeholder text, remove it!-->
 <p>Society philosophy merciful selfish sexuality depths overcome madness. Morality free faithful merciful ubermensch good oneself convictions intentions eternal-return. Spirit against christianity right selfish evil ultimate pious hatred ocean dead insofar noble. Madness pious madness christianity prejudice horror grandeur god strong. Ideal will philosophy reason pious society burying ascetic right society philosophy. Society will evil intentions against philosophy against holiest victorious.</p>
 </section>
 <section id="introduction" class="level2">
-<h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
-<!-- the following is just a placeholder text, remove it!-->
-<p>Against holiest pinnacle mountains merciful ideal society play disgust will ubermensch ultimate pinnacle victorious. Snare value law gains battle pious intentions revaluation strong. Insofar snare faith ideal oneself.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Include tables with the function "kable"</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="fu">head</span>(mtcars))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<table class="table table-sm table-striped">
-<colgroup>
-<col style="width: 26%">
-<col style="width: 7%">
-<col style="width: 5%">
-<col style="width: 7%">
-<col style="width: 5%">
-<col style="width: 7%">
-<col style="width: 8%">
-<col style="width: 8%">
-<col style="width: 4%">
-<col style="width: 4%">
-<col style="width: 7%">
-<col style="width: 7%">
-</colgroup>
-<thead>
-<tr class="header">
-<th style="text-align: left;"></th>
-<th style="text-align: right;">mpg</th>
-<th style="text-align: right;">cyl</th>
-<th style="text-align: right;">disp</th>
-<th style="text-align: right;">hp</th>
-<th style="text-align: right;">drat</th>
-<th style="text-align: right;">wt</th>
-<th style="text-align: right;">qsec</th>
-<th style="text-align: right;">vs</th>
-<th style="text-align: right;">am</th>
-<th style="text-align: right;">gear</th>
-<th style="text-align: right;">carb</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">Mazda RX4</td>
-<td style="text-align: right;">21.0</td>
-<td style="text-align: right;">6</td>
-<td style="text-align: right;">160</td>
-<td style="text-align: right;">110</td>
-<td style="text-align: right;">3.90</td>
-<td style="text-align: right;">2.620</td>
-<td style="text-align: right;">16.46</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">4</td>
-<td style="text-align: right;">4</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Mazda RX4 Wag</td>
-<td style="text-align: right;">21.0</td>
-<td style="text-align: right;">6</td>
-<td style="text-align: right;">160</td>
-<td style="text-align: right;">110</td>
-<td style="text-align: right;">3.90</td>
-<td style="text-align: right;">2.875</td>
-<td style="text-align: right;">17.02</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">4</td>
-<td style="text-align: right;">4</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Datsun 710</td>
-<td style="text-align: right;">22.8</td>
-<td style="text-align: right;">4</td>
-<td style="text-align: right;">108</td>
-<td style="text-align: right;">93</td>
-<td style="text-align: right;">3.85</td>
-<td style="text-align: right;">2.320</td>
-<td style="text-align: right;">18.61</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">4</td>
-<td style="text-align: right;">1</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Hornet 4 Drive</td>
-<td style="text-align: right;">21.4</td>
-<td style="text-align: right;">6</td>
-<td style="text-align: right;">258</td>
-<td style="text-align: right;">110</td>
-<td style="text-align: right;">3.08</td>
-<td style="text-align: right;">3.215</td>
-<td style="text-align: right;">19.44</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">3</td>
-<td style="text-align: right;">1</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Hornet Sportabout</td>
-<td style="text-align: right;">18.7</td>
-<td style="text-align: right;">8</td>
-<td style="text-align: right;">360</td>
-<td style="text-align: right;">175</td>
-<td style="text-align: right;">3.15</td>
-<td style="text-align: right;">3.440</td>
-<td style="text-align: right;">17.02</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">3</td>
-<td style="text-align: right;">2</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Valiant</td>
-<td style="text-align: right;">18.1</td>
-<td style="text-align: right;">6</td>
-<td style="text-align: right;">225</td>
-<td style="text-align: right;">105</td>
-<td style="text-align: right;">2.76</td>
-<td style="text-align: right;">3.460</td>
-<td style="text-align: right;">20.22</td>
-<td style="text-align: right;">1</td>
-<td style="text-align: right;">0</td>
-<td style="text-align: right;">3</td>
-<td style="text-align: right;">1</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<!-- the following is just a placeholder text, remove it!-->
-<p>Revaluation evil aversion ultimate decrepit disgust decrepit eternal-return noble faithful pinnacle. Truth ascetic inexpedient decrepit free. Ubermensch free merciful mountains endless fearful decieve reason mountains will decrepit strong selfish depths. Overcome faith snare gains oneself transvaluation.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># include plots automatically</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(mtcars, <span class="fu">aes</span>(cyl, disp)) <span class="sc">+</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="index_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid" width="672"></p>
-</div>
-</div>
+<h2 class="anchored" data-anchor-id="introduction">1 Introduction</h2>
+<p>introduction blabla…The study will investigate different criteria such as speed, acceleration or location and use different features such as mean, minimum and maximum values for comparison with experimentally defined thresholds to achieve accurate mode of transport identification.</p>
+<p>Hence, this research project aims to implement a basic data science procedure in R to identify travel modes from mobile GPS data collected with the POSMO-APP. The following two research question should be answered during that process:</p>
+<ol type="1">
+<li>How can a basic analysis tool for travel mode detection from GPS data be implemented in R and what accuracy is achieved with it?</li>
+<li>What are the most effective criteria, features and thresholds for the detection of different travel modes?</li>
+</ol>
 </section>
 <section id="material-and-methods" class="level2">
-<h2 class="anchored" data-anchor-id="material-and-methods">Material and Methods</h2>
-<!-- the following is just a placeholder text, remove it!-->
-<p>Christianity revaluation value battle faithful marvelous society derive free truth. Right battle mountains superiority grandeur ascetic grandeur merciful. Derive against intentions burying salvation ocean. Right intentions dead victorious ideal spirit evil ultimate joy. Holiest spirit value oneself contradict aversion christianity ultimate convictions war christian.</p>
+<h2 class="anchored" data-anchor-id="material-and-methods">2 Material and Methods</h2>
+<div class="cell">
+
+</div>
+<section id="datasets-conceptual-model" class="level3">
+<h3 class="anchored" data-anchor-id="datasets-conceptual-model">2.1 Datasets &amp; Conceptual Model</h3>
+<p>We used movement data from one of our team members, collected with the POSMO-App over a period of 54 days (18.04.-10.06.2023). Throughout this period, with the sampling rate set to 5 seconds, a total of 61’279 data points were gathered. We proceeded with the following attributes:</p>
+<ul>
+<li>datetime</li>
+<li>geometry (X- and Y-Coordinates in CH1903+ LV95)</li>
+<li>transport_mode (manually corrected and validated in POSMO)</li>
+</ul>
+<p>Additionally, the dataset swissTLM3D was obtained from (QUELLE?), whereof the following feature classes and attributes were used:</p>
+<ul>
+<li>TLM_STRASSE (OBJEKTART, geometry)</li>
+<li>TLM_EISENBAHN (VERKEHRSMITTEL, geometry)</li>
+<li>TLM_SCHIFFFAHRT (OBJEKTART, geometry)</li>
+<li>TLM_HALTESTELLE (OBJEKTART, geometry)</li>
+</ul>
+<p>And last, a second POSMO-dataset provided by one of the other students was used for validation (see chapter ?). This data was collected over a period of 67 days (11.04-16.06.2023) with a sampling rate of 10s, resulting in a total of 46’305 datapoints. It was eventually corrected and validated for travel mode in POSMO as well and the same attributes were analyzed further.</p>
+<p>The movement space was conceptualized, based on Laube et al.&nbsp;(2017), as continuous, 2D, and entity-based. Therefore, all datasets were structured as vector data. We modeled the movement as a series of unconstrained, intermittent, and time-stamped fixes, using the Lagrange perspective with event-based, active tracking since the POSMO-App collects GPS data.</p>
+<div class="cell">
+
+</div>
+</section>
+<section id="segmentation-filtering" class="level3">
+<h3 class="anchored" data-anchor-id="segmentation-filtering">2.2 Segmentation &amp; Filtering</h3>
+<p>In order to assign transport modes to trajectories, the POSMO data had to be divided into sub-segments representing individual and continuous movements first. Additionally, as according to Laube &amp; Purves (2011), moving objects in the real world almost always exhibit a variety of static and dynamic behaviors, filtering and segmentation is also required for the calculation of movement characteristics. The authors state that without filtering static segments will lead to an underestimation of speed and overestimation of sinuosity since the influence of GPS errors is greater during static phases.</p>
+<p>Hence, an initial segmentation was performed by assigning a new segment ID whenever the time gap between consecutive fixes exceeded double the sampling rate (10s). This segmentation was performed, as the event-based tracking of the POSMO-App led to large gaps, which needed to be separated for the further calculations. Then, segmentation was performed according to Laube &amp; Purves (2011), were static fixes are classified as those whose average Euclidean distance to other fixes inside a temporal window v is less than some threshold d.&nbsp;Here, a temporal window v of 30 seconds (6 fixes) and a threshold d of 2 meters were chosen and calculations were performed within each segment separately. Further, a new segment ID was assigned after every static period and static fixes were removed. Lastly, sub-segments with a length less than 500m were removed as well. In contrast to Laube &amp; Purves (2011) these short segments were chosen according to a distance and not a temporal scale, as depending on the transport mode used, different temporal scales may be important. For example, a trajectory of a 3 minutes walk may not be of great interest, while a train or bus journey of 3 minutes could already be important. The filtering and segmentation for a exemplary day is visualized step by step in figure 1. Lastly, segments with a average sinuosity (calculated according to chapter 2.3) greater than 2 were removed as well, as they mostly represented GPS errors, as visible in figure 2. During that process, the dataset was segmented into 202 trajectories consisting of 37’942 fixes.</p>
+<div class="cell">
+
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid figure-img" width="960"></p>
+<p></p><figcaption class="figure-caption"><em>Figure 1: segmentation and filtering of trajectories: Raw data (A) was filtered into static and dynamic points (B). Then static points were removed and trajectories segmented according to these breaks (C). Last, short segments (&lt;500m) were removed (D)</em></figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="calculating-movment-parameters" class="level3">
+<h3 class="anchored" data-anchor-id="calculating-movment-parameters">2.3 Calculating Movment Parameters</h3>
+<p>In order to differentiate between the different transportation modes, the movement parameters speed, acceleration and sinuosity were calculated. Speed was calculated according to Laube &amp; Purves (2011) using three fixes located inside a temporal window w, which was set to 20 seconds. Acceleration was calculated based on the same principle and defined as the change in velocity over the change in time. The calculation of sinuosity was based on Laube &amp; Purves (2011) as well, where it is defined as the ratio between a nominal track length and the line connecting the first and last points in the sampling window w consisting of 5 fixes. Hence, a sinuosity of 1 represents a straight line, while increasing sinuosity leads to higher values. All of these calculations were performed for each segment separately.</p>
+<div class="cell">
+
+</div>
+<div class="cell">
+
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid figure-img" width="672"></p>
+<p></p><figcaption class="figure-caption">after calculation of the moving parameters, segments with a sinuosity higher than 2 were removed as well, shown here for a examplary day before (A) and after the filtering (B)</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Next the minimum, maximum and average values were calculated for all three parameters (speed, acceleration, sinuosity) and every segment. Additionally, every segment was assigned with the adjusted travel mode from POSMO. As segmentation as done here and in POSMO may not be identical, points of the same segments may have several different transportation modes from POSMO. Hence, the transportation mode which was attributed to most points of a segment was chosen. Additionally, the percentage of points per segment attributed with the assigned mode was calculated for possible further analysis. The different features of the three parameters were then plotted by their transportation mode for exploratory analysis (figure 3).</p>
+<div class="cell">
+
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="index_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid figure-img" width="672"></p>
+<p></p><figcaption class="figure-caption">Exploratory data analysis of the movement parameters acceleration (acc [m/s^2)]), sinuosity (sin) and speed (speed [m/s]), visualized as the maximal (max), minimum (min) and average (mean) value per segment and filled by transport mode.</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+<p>It can be observed, that most transportation modes show similar patterns in terms of the calculated movement parameters, or at least have significant overlaps. Only train trajectories differ considerably from others regarding speed and acceleration. Hence, we have made the decision to approach the transport mode detection by first embedding the trajectories within their geographic context and classifying them based on this information, wherever possible.</p>
+</section>
+<section id="adding-geographic-context" class="level3">
+<h3 class="anchored" data-anchor-id="adding-geographic-context">2.4 Adding Geographic Context</h3>
+<p>According to Gschwend (2015) movement patterns are mostly quantified on the basis of geometric properties and the arrangement of the fixes, while the geographic environment surrounding the movement would provide useful semantics insights. As the exploratory data analysis of the movement parameters have shown hardly distinguishable features, we wanted to add this approach to our analysis. Hence, as described in chapter 2.1, several feature classes of the swissTLM3D were used and all roads, rails and boat-routes were merged into one background dataset. Next, a spatial join was performed, attributing every fix of the POSMO data the nearest feature of the merged background, as visualized in figure 4 for an exemplary day. Lastly, every segment was assigned with the nearest feature attributed to most of the points in a similar way it was done for the POSMO travel mode.</p>
+<div class="cell">
+
+</div>
+<div class="cell">
+
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">#| echo: false</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">#| warning: false</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co">#| message: false</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">include_graphics</span>(<span class="st">"output_files/p7.tiff"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="output_files/p7.tiff" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption"><em>Figure 4: Spatial join of the POSMO data to the nearest feature of roads, rails and boat lines for the examplary day 18.04.2023</em></figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Further, the feature class TLM_HALTESTELLE of swissTLM3D containing bus, train and boat stops was used as well. A buffer of 75 meters was calculated around every stop and a spatial join was performed testing for fixes to be within these buffers. Next, for every segment the information if the first and the last point were within a stop-buffer was saved additionally for further analysis. Finally, the information about the moving parameters were merged with the geographical context of the trajectories into a dataset ready for travel mode classification.</p>
+<div class="cell">
+
+</div>
+<div class="cell">
+
+</div>
+</section>
+<section id="travel-mode-detection" class="level3">
+<h3 class="anchored" data-anchor-id="travel-mode-detection">2.5 Travel Mode Detection</h3>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>sf [335 × 13] (S3: sf/tbl_df/tbl/data.frame)
+ $ segment_id          : Factor w/ 2555 levels "1","2","3","4",..: 2 8 24 26 32 34 44 60 62 66 ...
+ $ mean_speed          : num [1:335] 1.23 7.88 4.39 5.22 4.58 ...
+ $ max_speed           : num [1:335] 1.4 13.82 5.22 7.88 11.67 ...
+ $ min_speed           : num [1:335] 1.0196 1.7532 2.8568 2.6591 0.0132 ...
+ $ mean_acc            : num [1:335] 0.000607 -0.029014 -0.007735 -0.066902 -0.00466 ...
+ $ max_acc             : num [1:335] 0.00659 0.17226 0.0231 -0.01555 0.23119 ...
+ $ min_acc             : num [1:335] -0.00388 -0.31756 -0.05919 -0.104 -0.22258 ...
+ $ mean_sin            : num [1:335] 1.01 1.04 1.11 1.06 1.05 ...
+ $ max_sin             : num [1:335] 1.07 1.38 1.29 1.12 1.6 ...
+ $ min_sin             : num [1:335] 1 1 1.01 1 1 ...
+ $ transport_mode_POSMO: chr [1:335] "Walk" "Bus" "Bus" "Bus" ...
+ $ percentage_tm_POSMO : num [1:335] 100 100 100 100 100 ...
+ $ geometry            :sfc_MULTIPOINT of length 335; first list element:  'XY' num [1:27, 1:2] 2682667 2682674 2682683 2682686 2682688 ...
+ - attr(*, "sf_column")= chr "geometry"
+ - attr(*, "agr")= Factor w/ 3 levels "constant","aggregate",..: NA NA NA NA NA NA NA NA NA NA ...
+  ..- attr(*, "names")= chr [1:12] "segment_id" "mean_speed" "max_speed" "min_speed" ...</code></pre>
+</div>
+</div>
+</section>
+<section id="validation" class="level3">
+<h3 class="anchored" data-anchor-id="validation">2.6 Validation</h3>
+</section>
 </section>
 <section id="results" class="level2">
-<h2 class="anchored" data-anchor-id="results">Results</h2>
-<!-- the following is just a placeholder text, remove it!-->
-<p>Philosophy oneself passion play fearful self noble zarathustra deceptions sexuality. Endless ocean of oneself dead ocean. Selfish decrepit.</p>
-</section>
-<section id="discussion" class="level2">
-<h2 class="anchored" data-anchor-id="discussion">Discussion</h2>
-<!-- the following is just a placeholder text, remove it!-->
-<p>Justice convictions spirit sexuality insofar free marvelous joy. Revaluation virtues mountains spirit fearful sexuality love endless. Society intentions will noble burying aversion moral. Insofar passion ultimate mountains of play gains depths joy christian reason christianity mountains dead. Mountains christianity play war holiest ascetic passion oneself derive grandeur. Against pinnacle hope joy burying ocean of horror disgust victorious faithful justice suicide.</p>
-<p>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD ## Sevis… Änderung…</p>
-</section>
-<section id="sevis-änderung" class="level2">
-<h2 class="anchored" data-anchor-id="sevis-änderung">Sevis… Änderung :)</h2>
+<h2 class="anchored" data-anchor-id="results">3 Results</h2>
+<div class="cell">
+
+</div>
 </section>
 
 </main>

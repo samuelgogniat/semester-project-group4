@@ -1,76 +1,37 @@
 ---
-title: The title of your Semesterproject
-subtitle: A subtle subtitle
-author: Firstname1 Lastname1 and Firstname2 Lastname2
-output: html
+title: Implementation of a Analysis Tool for Travel Mode Detection in R
+subtitle: a Deciscion-Tree Approach
+authors: Severin Aicher and Samuel Gogniat
+output: 
+  html_document:
+      fig_caption: yes
+      code_folding: hide
 editor_options: 
   chunk_output_type: console
 ---
 
-<!-- You can add  your R Code with Code chunks-->
-
-```{r}
-#| echo: false
-#| warning: false
-#| message: false
-
-# You can set chunk options individually per code chunk, as was done with this
-# code chunk.
-
-# echo: false           hides the code from the generated output
-# warning: false        hides warnings from the generated output
-
-# message: false        hides messages from the generated output
-
-# To apply the setting for all code chunks, add the options to the yaml header of the document (in between the ---) without the preceeding "#|".
-
-```
-
 ## Abstract
-
-<!-- the following is just a placeholder text, remove it!-->
 
 Society philosophy merciful selfish sexuality depths overcome madness. Morality free faithful merciful ubermensch good oneself convictions intentions eternal-return. Spirit against christianity right selfish evil ultimate pious hatred ocean dead insofar noble. Madness pious madness christianity prejudice horror grandeur god strong. Ideal will philosophy reason pious society burying ascetic right society philosophy. Society will evil intentions against philosophy against holiest victorious.
 
-## Introduction
+## 1 Introduction
 
-<!-- the following is just a placeholder text, remove it!-->
+introduction blabla...The study will investigate different criteria such as speed, acceleration or location and use different features such as mean, minimum and maximum values for comparison with experimentally defined thresholds to achieve accurate mode of transport identification. 
 
-Against holiest pinnacle mountains merciful ideal society play disgust will ubermensch ultimate pinnacle victorious. Snare value law gains battle pious intentions revaluation strong. Insofar snare faith ideal oneself.
+Hence, this research project aims to implement a basic data science procedure in R to identify travel modes from mobile GPS data collected with the POSMO-APP. The following two research question should be answered during that process:
 
-```{r}
-library(ggplot2)
+1.    How can a basic analysis tool for travel mode detection from GPS data be implemented in R and what accuracy is achieved with it?
+2.    What are the most effective criteria, features and thresholds for the detection of different travel modes?
 
-# Include tables with the function "kable"
 
-knitr::kable(head(mtcars))
-```
-
-<!-- the following is just a placeholder text, remove it!-->
-
-Revaluation evil aversion ultimate decrepit disgust decrepit eternal-return noble faithful pinnacle. Truth ascetic inexpedient decrepit free. Ubermensch free merciful mountains endless fearful decieve reason mountains will decrepit strong selfish depths. Overcome faith snare gains oneself transvaluation.
-
-```{r}
-# include plots automatically
-
-ggplot(mtcars, aes(cyl, disp)) +
-  geom_point()
-
-```
-
-## Material and Methods
-
-<!-- the following is just a placeholder text, remove it!-->
-
-Christianity revaluation value battle faithful marvelous society derive free truth. Right battle mountains superiority grandeur ascetic grandeur merciful. Derive against intentions burying salvation ocean. Right intentions dead victorious ideal spirit evil ultimate joy. Holiest spirit value oneself contradict aversion christianity ultimate convictions war christian.
+## 2 Material and Methods
 
 ```{r}
 #| echo: false
 #| warning: false
 #| message: false
 
-
-#data preperation
+#loading libraries
 
 library("readr")
 library("dplyr")
@@ -81,136 +42,113 @@ library("zoo")
 library("tmap")
 library("lubridate")
 library("tidyr")
+library("gridExtra")
+```
 
+### 2.1 Datasets & Conceptual Model
 
-data <- read_delim("posmo_data/posmo_v1.csv")
-head(data)
+We used movement data from one of our team members, collected with the POSMO-App over a period of 54 days (18.04.-10.06.2023). Throughout this period, with the sampling rate set to 5 seconds, a total of 61’279 data points were gathered. We proceeded with the following attributes:
 
-data <- select(data, datetime, transport_mode, lon_x, lat_y) # Keep only the necessary columns
+-	datetime
+-	geometry (X- and Y-Coordinates in CH1903+ LV95)
+-	transport_mode (manually corrected and validated in POSMO) 
+
+Additionally, the dataset swissTLM3D was obtained from (QUELLE?), whereof the following feature classes and attributes were used:
+
+-	TLM_STRASSE (OBJEKTART, geometry)
+-	TLM_EISENBAHN (VERKEHRSMITTEL, geometry)
+-	TLM_SCHIFFFAHRT (OBJEKTART, geometry)
+-	TLM_HALTESTELLE (OBJEKTART, geometry)
+
+And last, a second POSMO-dataset provided by one of the other students was used for validation (see chapter ?). This data was collected over a period of 67 days (11.04-16.06.2023) with a sampling rate of 10s, resulting in a total of 46’305 datapoints. It was eventually corrected and validated for travel mode in POSMO as well and the same attributes were analyzed further.
+
+The movement space was conceptualized, based on Laube et al. (2017), as continuous, 2D, and entity-based. Therefore, all datasets were structured as vector data. We modeled the movement as a series of unconstrained, intermittent, and time-stamped fixes, using the Lagrange perspective with event-based, active tracking since the POSMO-App collects GPS data.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| results: 'hide'
+
+##loading our own dataset:
+
+data <- read_delim("posmo_data/posmo_v3.csv")
+head(data) #time is 2h behind
+data$datetime <- as.POSIXct(data$datetime, tz = "UTC-2")  #setting time right
+data <- arrange(data, datetime) #arrange, so that datetime is in the right order
+
+data <- select(data, datetime, transport_mode, lon_x, lat_y) # keep only the  attributes needed
 
 data <- st_as_sf(data, coords = c("lon_x","lat_y"), crs = 4326) |>  #cs is transformed to 2056
   st_transform(2056)
 
 data_coord <- st_coordinates(data) #coordinates are extracted
 data <- cbind(data, data_coord) #coordinates are binded in separate columns
+head(data) #first look
+summary(data)
 
-data <- data |> 
-  filter(as.Date(datetime) < "2023-04-14" | as.Date(datetime) > "2023-04-17") #delet days which I wasn't in switzerland. Could that be done by cutting all trajectories to switzerland?
+##loading swissTLM3D:
+
+roads <- read_sf("background_data/swisstlm3d_2023-03_2056_5728.shp/TLM_STRASSEN/swissTLM3D_TLM_STRASSE.shp") |> #loading roads
+  select(OBJEKTART, geometry) |> #choosing attributes needed
+  filter(OBJEKTART != "Verbindung" & OBJEKTART != "Raststaette" & OBJEKTART != "Dienstzufahrt" & OBJEKTART != "Verbindung" & OBJEKTART != "Zufahrt " & OBJEKTART != "Klettersteig") |> #deleting factorlevels which are not of interest
+  st_transform(2056)#set crs to 2056 (get rid of LN02)
+
+rails <- read_sf("background_data/swisstlm3d_2023-03_2056_5728.shp/TLM_OEV/swissTLM3D_TLM_EISENBAHN.shp") |> #loading rails
+  select(VERKEHRSMI, geometry) |> #choosing attributes needed
+  rename(OBJEKTART = VERKEHRSMI) |> #rename for merging
+    st_transform(2056)#set crs to 2056 (get rid of LN02)
+
+boats <- read_sf("background_data/swisstlm3d_2023-03_2056_5728.shp/TLM_OEV/swissTLM3D_TLM_SCHIFFFAHRT.shp") |> #loading boats
+   select(OBJEKTART, geometry) |> #choosing attributes needed
+     st_transform(2056)#set crs to 2056 (get rid of LN02)
+
+stops <- read_sf("background_data/swisstlm3d_2023-03_2056_5728.shp/TLM_OEV/swissTLM3D_TLM_HALTESTELLE.shp")|> #loading stops
+   select(OBJEKTART, geometry) |> #choosing attributes needed
+    st_transform(2056) #set crs to 2056 (get rid of LN02)
+
+##loading POSMO-dataset for validation:
+
+val_data <- read_delim("posmo_data/posmo_validation.csv")
+head(val_data) #time is probably behind as well...
+val_data$datetime <- as.POSIXct(val_data$datetime, tz = "UTC-2") 
+val_data <- arrange(val_data, datetime) 
+
+val_data <- select(val_data, datetime, transport_mode, lon_x, lat_y) # keep only the  attributes needed
+
+val_data <- st_as_sf(val_data, coords = c("lon_x","lat_y"), crs = 4326) |>  #cs is transformed to 2056
+  st_transform(2056)
+
+val_data_coord <- st_coordinates(val_data) #coordinates are extracted
+data <- cbind(val_data, val_data_coord) #coordinates are binded in separate columns
+#head(val_data) #first look
+#summary(val_data)
+
 ```
+
+### 2.2 Segmentation & Filtering
+
+In order to assign transport modes to trajectories, the POSMO data had to be divided into sub-segments representing individual and continuous movements first. Additionally, as according to Laube & Purves (2011), moving objects in the real world almost always exhibit a variety of static and dynamic behaviors, filtering and segmentation is also required for the calculation of movement characteristics. The authors state that without filtering static segments will lead to an underestimation of speed and overestimation of sinuosity since the influence of GPS errors is greater during static phases. 
+
+Hence, an initial segmentation was performed by assigning a new segment ID whenever the time gap between consecutive fixes exceeded double the sampling rate (10s). This segmentation was performed, as the event-based tracking of the POSMO-App led to large gaps, which needed to be separated for the further calculations. Then, segmentation was performed according to Laube & Purves (2011), were static fixes are classified as those whose average Euclidean distance to other fixes inside a temporal window v is less than some threshold d. Here, a temporal window v of 30 seconds (6 fixes) and a threshold d of 2 meters were chosen and calculations were performed within each segment separately. Further, a new segment ID was assigned after every static period and static fixes were removed. Lastly, sub-segments with a length less than 500m were removed as well. In contrast to Laube & Purves (2011) these short segments were chosen according to a distance and not a temporal scale, as depending on the transport mode used, different temporal scales may be important. For example, a trajectory of a 3 minutes walk may not be of great interest, while a train or bus journey of 3 minutes could already be important. The filtering and segmentation for a exemplary day is visualized step by step in figure 1. Lastly, segments with a average sinuosity (calculated according to chapter 2.3) greater than 2 were removed as well, as they mostly represented GPS errors, as visible in figure 2. During that process, the dataset was segmented into 202 trajectories consisting of 37'942 fixes. 
 
 ```{r}
 #| echo: false
 #| warning: false
 #| message: false
 
-#data pre-processing
+##segmentation and filtering:
 
-#choose two single days for trial:
-data_1 <- data |>
-    filter(as.Date(datetime) == "2023-04-27") # a second interesting date: "2023-04-21"
-
-# Step 1: calculating timelag
-
-data_1 <- data_1 |>
-  mutate(timelag = as.numeric(difftime(lead(datetime), datetime, units = "secs"))) 
-
-# Step 2: Identify rows with gaps (definied as more than 10s)
-
-data_1 <- data_1 |> 
-  mutate(gap = timelag > 10)
-
-# Step 3: Assign segment IDs according to gaps
-
-data_1 <- data_1 |> 
-  mutate(segment_id = cumsum(gap))
-
-# Step 4: Calculate moving window of stepMean (window of 6 fixes: 30s)
-
-data_1 <- data_1 |> 
-  group_by(segment_id) |>
-    mutate(
-    stepMean = rowMeans(
-      cbind(
-        sqrt((lag(X, 3) - X)^2 + (lag(Y, 3) - Y)^2),
-        sqrt((lag(X, 2) - X)^2 + (lag(Y, 2) - Y)^2),
-        sqrt((lag(X, 1) - X)^2 + (lag(Y, 1) - Y)^2),
-        sqrt((X - lead(X, 1))^2 + (Y - lead(Y, 1))^2),
-        sqrt((X - lead(X, 2))^2 + (Y - lead(Y, 2))^2),
-        sqrt((X - lead(X, 3))^2 + (Y - lead(Y, 3))^2)
-      )
-    )
-  )
-  
-
-# Step 5: Create the "static" column. StepMean below 2m per 5s -> static
-
-
-data_1 <- data_1 %>%
-  mutate(static = if_else(is.na(stepMean) | stepMean < 2, T, F))
-
-#plot for a first look:
-
-ggplot(data_1, aes(X, Y, color=static))+ 
+p1 <- data |> #visualize raw data for example day
+  filter(as.Date(datetime) == "2023-04-18") |>
+  ggplot(aes(X, Y))+ 
   geom_point()+
   geom_path()+
-  coord_equal()
+  coord_equal() +
+  theme_classic() +
+  ggtitle("(A) raw data")          
 
-# Step 6: split up to smaller segments according to static/non-static 
-
-rle_id <- function(vec) {
-    x <- rle(vec)$lengths
-    as.factor(rep(seq_along(x), times = x))
-} #function to assign unique ID for each segment
-
-data_1 <- data_1 |>
-   ungroup() |> 
-    mutate(segment_id = rle_id(static))
-
-# Step 7: filter out all non-static points
-
-data_1 <- data_1 |> 
-    filter(!static)
-
-# plot for a look
-
-ggplot(data_1,aes(X, Y, color = segment_id)) +
-    geom_path() +
-    geom_point() +
-    coord_fixed() +
-    theme(legend.position = "none")
-
-# Step 8: filter out small segments (definied as less than 2mins or less than 200m)
-
-data_1 <- data_1 |> 
-  group_by(segment_id) |> 
-  mutate(steplength = sqrt((X - lead(X, 1)) ^ 2 + (Y - lead(Y, 1)) ^ 2)) |> 
-  filter(sum(steplength, na.rm=T)>200) 
-
-# plot for a lok
-
-ggplot(data_1,aes(X, Y, color = segment_id)) +
-    geom_path() +
-    geom_point() +
-    coord_fixed() +
-    theme(legend.position = "none")
-
-# plot for a last time
-
-tmap_mode("view") 
-tm_shape(data_1)+
-  tm_dots(col="segment_id")
-
-```
-
-```{r}
-#| echo: false
-#| warning: false
-#| message: false
-
-#apply on whole dataset
-
-
-data <- data |>
+data <- data |> #initial segmentation for time gaps > 10s (double the sampling rate)
   mutate(
     timelag = as.numeric(difftime(lead(datetime), datetime, units = "secs")), 
     gap = timelag > 10,
@@ -218,7 +156,7 @@ data <- data |>
   )
 
 data <- data |> 
-  group_by(segment_id) |>
+  group_by(segment_id) |> #calculating the stepmean with the moving temporal window within each segment
     mutate(
     stepMean = rowMeans(
       cbind(
@@ -230,97 +168,162 @@ data <- data |>
         sqrt((X - lead(X, 3))^2 + (Y - lead(Y, 3))^2)
       )
     ),
-    static = if_else(is.na(stepMean) | stepMean < 2, T, F)
+    static = if_else(is.na(stepMean) | stepMean < 2, T, F) #define every point with a stepMean of less than 2m as static
   )
   
+p2 <- data |> #visualize assignment of static points
+  filter(as.Date(datetime) == "2023-04-18") |>
+  ggplot(aes(X, Y, color=static))+ 
+  geom_point()+
+  geom_path(group=1)+
+  coord_equal() +
+  theme_classic() +
+  theme(legend.position = c(0.2,0.2))+
+  labs(title = "(B) filtering static points")
 
 rle_id <- function(vec) {
     x <- rle(vec)$lengths
     as.factor(rep(seq_along(x), times = x))
 } #function to assign unique ID for each segment
 
-data <- data |>
-   ungroup() |> 
-    mutate(segment_id = rle_id(static)) |> 
-    filter(!static)
-
 data <- data |> 
+   ungroup() |> 
+    mutate(segment_id = rle_id(static)) |> #assign new segment ID after every break (static points)
+    filter(!static) #remove static points
+
+p3 <- data |> #visualize segmentation
+  filter(as.Date(datetime) == "2023-04-18") |>
+  ggplot(aes(X, Y, color=segment_id))+ 
+  geom_point()+
+  geom_path()+
+  coord_equal() +
+  theme_classic() +
+  theme(legend.position = "none")+
+  labs(title = "(C) segmentation")
+    
+    
+data <- data |> #remove short segments (less than 300m)
   group_by(segment_id) |> 
   mutate(steplength = sqrt((X - lead(X, 1)) ^ 2 + (Y - lead(Y, 1)) ^ 2)) |> 
-  filter(sum(steplength, na.rm=T)>200) 
+  filter(sum(steplength, na.rm=T)>300) 
 
-ggplot(data,aes(X, Y, color = segment_id)) +
-    geom_path() +
-    geom_point() +
-    coord_fixed() +
-    theme(legend.position = "none")
+p4 <- data |> #visualize final segments
+  filter(as.Date(datetime) == "2023-04-18") |>
+  ggplot(aes(X, Y, color=segment_id))+ 
+  geom_point()+
+  geom_path()+
+  coord_equal() +
+  theme_classic() +
+  theme(legend.position = "none")+
+  labs(title = "(D) filtering short segments")
+```
+
+```{r, fig.width=70, fig.cap = "*Figure 1: segmentation and filtering of trajectories: Raw data (A) was filtered into static and dynamic points (B). Then static points were removed and trajectories segmented according to these breaks (C). Last, short segments (<500m) were removed (D)*"}
+#| echo: false
+#| warning: false
+#| message: false
+
+##plot for segmentation and filtering:
+
+grid.arrange(p1,p2,p3,p4, nrow=2, ncol=2)
 
 ```
 
+### 2.3 Calculating Movment Parameters
+
+In order to differentiate between the different transportation modes, the movement parameters speed, acceleration and sinuosity were calculated. Speed was calculated according to Laube & Purves (2011) using three fixes located inside a temporal window w, which was set to 20 seconds. Acceleration was calculated based on the same principle and defined as the change in velocity over the change in time. The calculation of sinuosity was based on Laube & Purves (2011) as well, where it is defined as the ratio between a nominal track length and the line connecting the first and last points in the sampling window w consisting of 5 fixes. Hence, a sinuosity of 1 represents a straight line, while  increasing sinuosity leads to  higher values. All of these calculations were performed for each segment separately. 
+
 ```{r}
-#calculate moving parameters
+#| echo: false
+#| warning: false
+#| message: false
+
+##calculate moving parameters:
 
 data <- data |> 
-  group_by(segment_id) |> 
+  group_by(segment_id) |> #group by segment, so moving window starts for every segment again
   mutate(
-    speed = {
+    speed = { #distance and time passed is calculated with lag/lead of 2 -> 10s in both directions
       step_minus2 <- sqrt((lag(X, 2) - X) ^ 2 + (lag(Y, 2) - Y) ^ 2)
       time_minus2 <- abs(as.numeric(difftime(lag(datetime, 2), datetime, units = "secs")))
       step_plus2 <- sqrt((X - lead(X, 2)) ^ 2 + (Y - lead(Y, 2)) ^ 2)
       time_plus2 <- as.numeric(difftime(lead(datetime, 2), datetime, units = "secs"))
-      (step_minus2/time_minus2 + step_plus2/time_plus2) / 2
+      (step_minus2/time_minus2 + step_plus2/time_plus2) / 2 #average is taken 
     },
-    acc = {
-      speed_minus2 <- speed - lag(speed, 2)
+    acc = { #change in speed and time is calculated with lag/lead of 2 -> 10s in both directions
+      speed_minus2 <- speed - lag(speed, 2) 
       speed_plus2 <- lead(speed, 2) - speed
       time_minus2 <- abs(as.numeric(difftime(lag(datetime, 2), datetime, units = "secs")))
       time_plus2 <- as.numeric(difftime(lead(datetime, 2), datetime, units = "secs"))
-      (speed_minus2/time_minus2 + speed_plus2/time_plus2) / 2   
+      (speed_minus2/time_minus2 + speed_plus2/time_plus2) / 2 #average is taken
       },
-    sin = {
-      d_minus1 <- sqrt((lag(X, 1) - X) ^ 2 + (lag(Y, 1) - Y) ^ 2)
+    sin = { #length from every point to next point in window of 5 points is calculated
+      d_minus1 <- sqrt((lag(X, 1) - X) ^ 2 + (lag(Y, 1) - Y) ^ 2) 
       d_minus2 <- sqrt((lag(X, 2) - lag(X, 1)) ^ 2 + (lag(Y, 2) - lag(Y, 1)) ^ 2)
       d_plus1  <- sqrt((X - lead(X, 1))^2 + (Y - lead(Y, 1))^2)
       d_plus2  <- sqrt((lead(X, 1) - lead(X, 2))^2 + (lead(Y,1) - lead(Y, 2))^2)
-      d_straight <- sqrt((lag(X, 2) - lead(X, 2))^2 + (lag(Y,2) - lead(Y, 2))^2)
-      (d_minus1 + d_minus2 + d_plus1 + d_plus2)/d_straight
+      d_straight <- sqrt((lag(X, 2) - lead(X, 2))^2 + (lag(Y,2) - lead(Y, 2))^2) #distance from first to last point of window
+      (d_minus1 + d_minus2 + d_plus1 + d_plus2)/d_straight #ratio between total length and shortest distance
     }
   )
 
-#filter with sinousity
+```
 
-data <- data |> 
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+##filter with sinuosity:
+
+p5 <- data |> 
+  filter(as.Date(datetime) == "2023-04-22") |> #plot before filter
+  ggplot(aes(X, Y, color=segment_id))+ 
+  geom_point()+
+  geom_path()+
+  coord_equal() +
+  theme_classic() +
+  theme(legend.position = "none")+
+  labs(title = "(A) before filtering sinuosity")
+    
+data <- data |> #filter out segments with hig sinuosity
   group_by(segment_id) |> 
   filter(mean(sin, na.rm=T)<2) 
 
+p6 <- data |> #plot after filter
+  filter(as.Date(datetime) == "2023-04-22") |>
+  ggplot(aes(X, Y, color=segment_id))+ 
+  geom_point()+
+  geom_path()+
+  coord_equal() +
+  theme_classic() +
+  theme(legend.position = "none")+
+  labs(title = "(B) after filtering sinuosity")
+    
 ```
 
-```{r}
-#allocate nearest road using SWISSTLM3d
-roads <- read_sf("background_data/swisstlm3d_2023-03_2056_5728.shp/TLM_STRASSEN/swissTLM3D_TLM_STRASSE.shp")
-roads <- select(roads, OBJEKTART, geometry)
-rails <- read_sf("background_data/swisstlm3d_2023-03_2056_5728.shp/TLM_OEV/swissTLM3D_TLM_EISENBAHN.shp")
-rails <- select(rails, OBJEKTART, geometry)
-boats <- read_sf("background_data/swisstlm3d_2023-03_2056_5728.shp/TLM_OEV/swissTLM3D_TLM_SCHIFFFAHRT.shp")
-boats <- select(boats, OBJEKTART, geometry)
+```{r, fig.cap = "after calculation of the moving parameters, segments with a sinuosity higher than 2 were removed as well, shown here for a examplary day before (A) and after the filtering (B)"}
+#| echo: false
+#| warning: false
+#| message: false
 
-background_data <- rbind(roads, rails, boats)
-background_data <- st_transform(background_data, 2056)
-data <- st_join(data, background_data, join = st_nearest_feature)
+##plot for sinuosity filter:
 
-
-#visualization part of it to see how good it is #not working yet
-
+grid.arrange(p5,p6, nrow=1)
 
 ```
 
-```{r}
-#summarize all
+Next the minimum, maximum and average values were calculated for all three parameters (speed, acceleration, sinuosity) and every segment. Additionally, every segment was assigned with the adjusted travel mode from POSMO. As segmentation as done here and in POSMO may not be identical, points of the same segments may have several different transportation modes from POSMO. Hence, the transportation mode which was attributed to most points of a segment was chosen. Additionally, the percentage of points per segment attributed with the assigned mode was calculated for possible further analysis. The different features of the three parameters were then plotted by their transportation mode for exploratory analysis (figure 3).
 
-#calculate summary
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+##calculate summary:
+#-> mean, max and min for all three parameters + assignment of POSMO-travel mode
 
 data$transport_mode <- as.factor(data$transport_mode)
-data$OBJVAL <- as.factor(data$OBJEKTART)
 data_smry <- data |> 
   group_by(segment_id) |> 
   summarise(
@@ -333,364 +336,181 @@ data_smry <- data |>
             mean_sin = mean(sin, na.rm=T),
             max_sin = max(sin,na.rm=T),
             min_sin = min(sin,na.rm=T),
-            transport_mode = levels(transport_mode)[which.max(table(transport_mode))],
-            nearest_route = levels(OBJEKTART)[which.max(table(OBJEKTART))]
+            transport_mode_POSMO = levels(transport_mode)[which.max(table(transport_mode))],
+            percentage_tm_POSMO = max(table(transport_mode)) / length(transport_mode) * 100
+)
 
-  )
 
+data_smry_long <- pivot_longer(data_smry, #convert from wide to long
+                           cols = -c("segment_id","transport_mode_POSMO", "percentage_tm_POSMO","geometry"),
+                           names_to = "parameter") 
+
+```
+
+```{r, fig.cap = "Exploratory data analysis of the  movement parameters acceleration (acc [m/s^2)]), sinuosity (sin) and speed (speed [m/s]), visualized as the maximal (max), minimum (min) and average (mean) value per segment and filled by transport mode."}
+#| echo: false
+#| warning: false
+#| message: false
+
+##plot for EDA:
+
+data_smry_long |> 
+ggplot(aes(x=transport_mode_POSMO, y=value, fill=transport_mode_POSMO))+
+  geom_boxplot()+
+  facet_wrap(~parameter, scales="free_y")+
+  theme_classic()+
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    legend.title = element_blank(),
+    legend.position = "bottom")
+
+```
+
+It can be observed, that most transportation modes show similar patterns in terms of the calculated movement parameters, or at least have significant overlaps. Only train trajectories differ considerably from others regarding speed and acceleration. Hence, we have made the decision to approach the transport mode detection by first embedding the trajectories within their geographic context and classifying them based on this information, wherever possible. 
+
+### 2.4 Adding Geographic Context
+
+According to Gschwend (2015) movement patterns are mostly quantified on the basis of geometric properties and the arrangement of the fixes, while the geographic environment surrounding the movement would provide useful semantics insights. As the exploratory data analysis of the movement parameters have shown hardly distinguishable features, we wanted to add this approach to our analysis. Hence, as described in chapter 2.1, several feature classes of the swissTLM3D were used and all roads, rails and boat-routes were merged into one background dataset. Next, a spatial join was performed, attributing every fix of the POSMO data the nearest feature of the merged background, as visualized in figure 4 for an exemplary day. Lastly, every segment was assigned with the nearest feature attributed to most of the points in a similar way it was done for the POSMO travel mode. 
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+##spatial join: attribute nearest route
+
+background_data <- rbind(roads, rails, boats) #merge the three datasets together
+data <- st_join(data, background_data, join = st_nearest_feature)
+
+data$OBJEKTART <- as.factor(data$OBJEKTART)
+data_smry_nearest <- data |> 
+  group_by(segment_id) |> 
+  summarise(
+            nearest_route = levels(OBJEKTART)[which.max(table(OBJEKTART))],  
+            percentage_nearest_route = max(table(OBJEKTART)) / length(OBJEKTART) * 100
+) |> 
+  as_tibble() |> 
+  select(-c("geometry"))
+
+
+```
+
+```{r, eval=FALSE}
+#| echo: false
+#| warning: false
+#| message: false
+
+data_01 <- data |> 
+  filter(as.Date(datetime) == "2023-04-18") #select example day
+
+bbox <- st_bbox(data_01) #produce a bounding box with that day
+clipped_background <- st_crop(background_data, bbox)
+
+p7 <- ggplot()+ #visualize
+  geom_sf(data=clipped_background, aes(color=OBJEKTART))+
+  geom_sf(data=data_01, alpha=0.4, size=2.5, aes(color=OBJEKTART))+
+  theme_classic()+
+  theme(legend.position = "bottom")
+
+ggsave(filename = "output_files/p7.tiff", p7, device = 'tiff',dpi=700)
+```
+
+```{r, fig.cap = "*Figure 4: Spatial join of the POSMO data to the nearest feature of roads, rails and boat lines for the examplary day 18.04.2023*"}
+
+#| echo: false
+#| warning: false
+#| message: false
+
+knitr::include_graphics("output_files/p7.tiff")
+```
+
+Further, the feature class TLM_HALTESTELLE of swissTLM3D containing bus, train and boat stops was used as well. A buffer of 75 meters was calculated around every stop and a spatial join was performed testing for fixes to be within these buffers. Next, for every segment the information if the first and the last point were within a stop-buffer was saved additionally for further analysis. Finally, the information about the moving parameters were merged with the geographical context of the trajectories into a dataset ready for travel mode classification.
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+##stop-buffer calculations:
+
+stops <- stops |> 
+  rename(stop_type = OBJEKTART)
+
+stops_buffer <- st_buffer(stops, 75) #calculating buffer of 75m around every stop
+stop_join <- st_join(data, stops_buffer, join = st_within) #spatial join with POSMO data
+
+first_point <- stop_join |> # a vector is produced, containing the information for the first point of every segment
+  group_by(segment_id) |> 
+  slice_head() |> #first point is chosen
+  pull(stop_type, segment_id) #information about stops is saved
+
+last_point <- stop_join |> #same for last point of every segment
+  group_by(segment_id) |> 
+  slice_tail() |> 
+  pull(stop_type, segment_id)
+```
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+##merging all parameters:
+
+data_smry_nearest <- data_smry_nearest |> 
+  cbind(first_point, last_point) 
+  
+data_class <- left_join(data_smry, data_smry_nearest, by = "segment_id")
 
 #export for classification
 
-write.csv(data_smry, "output_files/data_smry.csv")
+write.csv(data_class, "output_files/data_smry.csv")
+```
 
-#plot for EDA
+### 2.5 Travel Mode Detection
 
-data_smry_long <- pivot_longer(data_smry, 
-                           cols = -c("segment_id","transport_mode","geometry"),
-                           names_to = "parameter") 
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#travel mode detection
 
-ggplot(data_smry_long, aes(x=transport_mode, y=value, fill=transport_mode))+
-  geom_boxplot()+
-  facet_wrap(~parameter, scales="free_y")+
-  theme_bw()+
-  theme(
-    axis.title.x = element_blank(),
+data_class$travel_mode_det <- NA
+
+data_class <- data_class |> 
+  mutate(
+    travel_mode_det = case_when(
+      nearest_route == "Bahn" ~ "Train",
+      nearest_route == "Tram" ~ "Tram",
+      nearest_route %in% c("Autofaehre", "Personenfaehre") ~ "Boat",
+      first_point == "Haltestelle Schiff" & last_point == "Haltestelle Schiff" ~ "Boat",
+      (first_point %in% c("Haltestelle Bahn", "Haltestelle Bus")) & (last_point %in% c("Haltestelle Bus", "Haltestelle Bahn")) ~ "Bus",
+      max_speed > 12 | max_acc > 0.3 ~ "Car",
+      mean_speed > 2 | max_speed > 5  ~ "Bike",
+      TRUE ~ "Walk"
+    )
   )
+
+
+str(data_smry)
 ```
 
-```{r}
-data_smry <- read_delim("output_files/data_smry.csv", delim = ",")
+### 2.6 Validation
 
-#First allocation = Walk
-data_smry$travel_mode_det <- ifelse(data_smry$max_speed < 2, "Walk", NA)
 
-#Bike
-data_smry$travel_mode_det <- ifelse(is.na(data_smry$travel_mode_det) & data_smry$max_speed < 20 & data_smry$mean_speed < 7, "Bike", data_smry$travel_mode_det)
+## 3 Results
 
-#Rail
-data_smry$travel_mode_det <- ifelse(data_smry$nearest_route == "rail", "rail", data_smry$travel_mode_det)
-```
+```{r, eval=FALSE}
+#| echo: false
+#| warning: false
+#| message: false
+#confusion matrix
+library("cvms")
 
-## SEVI: TLM
-
-Load datas, preparing and cropping them to canton of zuerich
-
-```{r}
-
-#layers <- st_layers("background_data/SWISSTLM3D_2023_LV95_LN02.gpkg")
-
-#roads <- read_sf("background_data/SWISSTLM3D_2023_LV95_LN02.gpkg", layer = "tlm_strassen_strasse")
-#stops <- read_sf("background_data/SWISSTLM3D_2023_LV95_LN02.gpkg", layer = "tlm_oev_haltestelle")
-#rail <- read_sf("background_data/SWISSTLM3D_2023_LV95_LN02.gpkg", layer = "tlm_oev_eisenbahn")
-swiss <- read_sf("background_data/swissBOUNDARIES3D_1_4_TLM_LANDESGEBIET.shp")
-canton <- read_sf("background_data/swissBOUNDARIES3D_1_4_TLM_KANTONSGEBIET.shp")
-district <- read_sf("background_data/swissBOUNDARIES3D_1_4_TLM_BEZIRKSGEBIET.shp")
-plot(canton)
-plot(swiss)
-
-zurich <- canton |> 
-  filter(NAME=="Zürich")
-zurich <- zurich |> 
-  select(c(NAME, geometry))
-plot(zurich)
-
-horgen <- district |> 
-  filter(NAME=="Horgen" & BEZIRK_TEI==1)
-horgen <- horgen |> 
-  select(NAME, geometry)
-plot(horgen)
-
-roads <- st_transform(roads, st_crs(zurich))
-stops <- st_transform(stops, st_crs(zurich))
-rail <- st_transform(rail, st_crs(zurich))
-
-intersect_roads <- st_intersection(roads, zurich)
-intersect_stops <- st_intersection(stops, zurich)
-intersect_rail <- st_intersection(rail, zurich)
-
-plot(intersect_rail$geom)
-plot(intersect_roads$geom)
-plot(intersect_stops$geom)
-
-intersect_roads <- intersect_roads |> 
-  select(c(objektart, verkehrsbedeutung, geom))
-st_write(intersect_roads,"output_files/intersect_roads.gpkg")
-
-intersect_rail <- intersect_rail |> 
-  select(c(objektart, auf_strasse, verkehrsmittel, geom))
-st_write(intersect_rail,"output_files/intersect_rail.gpkg")
-
-intersect_stops <- intersect_stops |> 
-  select(c(objektart, name, geom))
-st_write(intersect_stops,"output_files/intersect_stops.gpkg")
-
-intersect_roads <- read_sf("output_files/intersect_roads.gpkg")
-intersect_rail <- read_sf("output_files/intersect_rail.gpkg")
-intersect_stops <- read_sf("output_files/intersect_stops.gpkg")
+conf_mat <- confusion_matrix(targets = data_smry$transport_mode, predictions = data_smry$travel_mode_det)
+knitr::kable(conf_mat$Table)
+conf_mat
 
 ```
 
-## Intersect data before filtering data
-
-nrow(data_swiss) ist etwas klein....vielleicht nachprüfen oder mit Sämi besprechen
-
-```{r}
-data_sevi <- read_delim("posmo_data/posmo_v1.csv")
-head(data_sevi)
-
-data_sevi <- select(data_sevi, datetime, transport_mode, lon_x, lat_y) # Keep only the necessary columns
-
-data_sevi <- st_as_sf(data_sevi, coords = c("lon_x","lat_y"), crs = 4326) |>  #cs is transformed to 2056
-  st_transform(2056)
-
-data_coord_sevi <- st_coordinates(data_sevi) #coordinates are extracted
-data_sevi <- cbind(data_sevi, data_coord_sevi) #coordinates are binded in separate columns
-
-swiss <- read_sf("background_data_small/swissBOUNDARIES3D_1_4_TLM_LANDESGEBIET.shp")
-canton <- read_sf("background_data_Small/swissBOUNDARIES3D_1_4_TLM_KANTONSGEBIET.shp")
-district <- read_sf("background_data_small/swissBOUNDARIES3D_1_4_TLM_BEZIRKSGEBIET.shp")
-
-zurich <- canton |> 
-  filter(NAME=="Zürich")
-zurich <- zurich |> 
-  select(c(NAME, geometry))
-
-horgen <- district |> 
-  filter(NAME=="Horgen" & BEZIRK_TEI==1)
-horgen <- horgen |> 
-  select(NAME, geometry)
-
-data <- st_transform(data_sevi, "+init=EPSG:2056")
-st_crs(swiss) <-  "+init=EPSG:2056"
-
-zurich <- st_transform(zurich, "+init=EPSG:2056")
-horgen <- st_transform(horgen, "+init=EPSG:2056")
-
-
-data_swiss <- read_delim("output_files/data_swiss.csv")
-#data_swiss <- st_intersection(data, swiss)
-#write_delim(data_swiss, "output_files/data_swiss.csv")
-
-
-data_zurich <- st_intersection(data_sevi, zurich)
-
-data_horgen <- st_intersection(data_sevi, horgen)
-
-
-#Timelag
-data_swiss <- data_swiss |>
-  mutate(timelag = as.numeric(difftime(lead(datetime), datetime, units = "secs")))
-
-data_zurich <- data_zurich |>
-  mutate(timelag = as.numeric(difftime(lead(datetime), datetime, units = "secs")))
-
-data_horgen <- data_horgen |>
-  mutate(timelag = as.numeric(difftime(lead(datetime), datetime, units = "secs")))
-
-#Gap
-data_swiss <- data_swiss %>%
-  mutate(gap = timelag > 10)
-
-data_zurich <- data_zurich %>%
-  mutate(gap = timelag > 10)
-
-data_horgen <- data_horgen %>%
-  mutate(gap = timelag > 10)
-
-
-#Segment ID
-data_swiss <- data_swiss %>%
-  mutate(segment_id = cumsum(gap))
-
-data_zurich <- data_zurich %>%
-  mutate(segment_id = cumsum(gap))
-
-data_horgen <- data_horgen %>%
-  mutate(segment_id = cumsum(gap))
-
-
-#Steplength
-data_swiss <- data_swiss %>%
-  group_by(segment_id) %>%
-  mutate(
-    step_length = sqrt((lead(X, 1) - X) ^ 2 + (lead(Y, 1) - Y) ^ 2),
-    sum_step_length = rollsum(step_length, k = 12, fill = NA, align = "right", na.rm = TRUE)
-  ) %>%
-  ungroup()
-
-data_zurich <- data_zurich %>%
-  group_by(segment_id) %>%
-  mutate(
-    step_length = sqrt((lead(X, 1) - X) ^ 2 + (lead(Y, 1) - Y) ^ 2),
-    sum_step_length = rollsum(step_length, k = 12, fill = NA, align = "right", na.rm = TRUE)
-  ) %>%
-  ungroup()
-
-data_horgen <- data_horgen %>%
-  group_by(segment_id) %>%
-  mutate(
-    step_length = sqrt((lead(X, 1) - X) ^ 2 + (lead(Y, 1) - Y) ^ 2),
-    sum_step_length = rollsum(step_length, k = 12, fill = NA, align = "right", na.rm = TRUE)
-  ) %>%
-  ungroup()
-
-#Static
-data_swiss <- data_swiss %>%
-  mutate(static = if_else(is.na(sum_step_length) | sum_step_length < 25, T, F))
-ggplot(data_swiss, aes(X, Y)) +
-  geom_path() +
-  geom_point() +
-  coord_fixed() +
-  theme_bw()+
-  theme(legend.position = "none")
-
-data_zurich <- data_zurich %>%
-  mutate(static = if_else(is.na(sum_step_length) | sum_step_length < 25, T, F))
-ggplot(data_zurich, aes(X, Y)) +
-  geom_path() +
-  geom_point() +
-  coord_fixed() +
-  theme_bw()+
-  theme(legend.position = "none")
-
-data_horgen <- data_horgen %>%
-  mutate(static = if_else(is.na(sum_step_length) | sum_step_length < 25, T, F))
-ggplot(data_horgen, aes(X, Y)) +
-  geom_path() +
-  geom_point() +
-  coord_fixed() +
-  theme_bw()+
-  theme(legend.position = "none")
-
-#RLE ID Function
-rle_id <- function(vec) {
-  x <- rle(vec)$lengths
-  as.factor(rep(seq_along(x), times = x))
-} 
-
-#Segment ID
-data_swiss <- data_swiss |>
-  mutate(segment_id = rle_id(static))
-
-data_zurich <- data_zurich |>
-  mutate(segment_id = rle_id(static))
-
-data_horgen <- data_horgen |>
-  mutate(segment_id = rle_id(static))
-
-#Filter Movement
-data_swiss <- data_swiss |> 
-  filter(!static)
-
-data_zurich <- data_zurich |> 
-  filter(!static)
-
-data_horgen <- data_horgen |> 
-  filter(!static)
-
-#Filter short segment IDs
-data_swiss <- data_swiss |> 
-  group_by(segment_id) |> 
-  filter(sum(timelag, na.rm = T) > 120) |> 
-  filter(sum(step_length, na.rm = T) > 200)
-
-data_zurich <- data_zurich |> 
-  group_by(segment_id) |> 
-  filter(sum(timelag, na.rm = T) > 120) |> 
-  filter(sum(step_length, na.rm = T) > 200)
-
-data_horgen <- data_horgen |> 
-  group_by(segment_id) |> 
-  filter(sum(timelag, na.rm = T) > 120) |> 
-  filter(sum(step_length, na.rm = T) > 200)
-
-#Plot
-
-ggplot(data_swiss, aes(X, Y, color = segment_id)) +
-  geom_path() +
-  geom_point() +
-  coord_fixed() +
-  theme(legend.position = "none")
-
-ggplot(data_zurich, aes(X, Y, color = segment_id)) +
-  geom_path() +
-  geom_point() +
-  coord_fixed() +
-  theme(legend.position = "none")
-
-ggplot(data_horgen, aes(X, Y, color = segment_id)) +
-  geom_path() +
-  geom_point() +
-  coord_fixed() +
-  theme(legend.position = "none")
-
-ggplot(data_swiss, aes(X, Y, color = segment_id)) +
-  geom_path() +
-  geom_point() +
-  coord_fixed() +
-  theme_bw()+
-  theme(legend.position = "none")
-
-ggplot(data_zurich, aes(X, Y, color = segment_id)) +
-  geom_path() +
-  geom_point() +
-  coord_fixed() +
-  theme_bw()+
-  theme(legend.position = "none")
-
-ggplot(data_horgen, aes(X, Y, color = segment_id)) +
-  geom_path() +
-  geom_point() +
-  coord_fixed() +
-  theme_bw()+
-  theme(legend.position = "none")
-
-#Speed
-data_swiss <- data_swiss|> 
-  mutate(speed = step_length/timelag) 
-
-data_zurich <- data_zurich|> 
-  mutate(speed = step_length/timelag) 
-
-data_horgen<- data_horgen|> 
-  mutate(speed = step_length/timelag) 
-
-#Mean, max und min speed
-data_swiss_smry <- data_swiss |> 
-  filter(timelag != 0) |> 
-  group_by(segment_id, transport_mode) |> 
-  summarise(mean_speed = mean(speed, na.rm=T),
-            max_speed = max(speed,na.rm=T),
-            min_speed = min(speed,na.rm=T))
-
-data_zurich_smry <- data_zurich |> 
-  filter(timelag != 0) |> 
-  group_by(segment_id, transport_mode) |> 
-  summarise(mean_speed = mean(speed, na.rm=T),
-            max_speed = max(speed,na.rm=T),
-            min_speed = min(speed,na.rm=T))
-
-data_horgen_smry <- data_horgen |> 
-  filter(timelag != 0) |> 
-  group_by(segment_id, transport_mode) |> 
-  summarise(mean_speed = mean(speed, na.rm=T),
-            max_speed = max(speed,na.rm=T),
-            min_speed = min(speed,na.rm=T))
-
-
-?sf
-
-
-```
-
-## Results
-
-<!-- the following is just a placeholder text, remove it!-->
-
-Philosophy oneself passion play fearful self noble zarathustra deceptions sexuality. Endless ocean of oneself dead ocean. Selfish decrepit.
-
-## Discussion
-
-<!-- the following is just a placeholder text, remove it!-->
-
-Justice convictions spirit sexuality insofar free marvelous joy. Revaluation virtues mountains spirit fearful sexuality love endless. Society intentions will noble burying aversion moral. Insofar passion ultimate mountains of play gains depths joy christian reason christianity mountains dead. Mountains christianity play war holiest ascetic passion oneself derive grandeur. Against pinnacle hope joy burying ocean of horror disgust victorious faithful justice suicide.
