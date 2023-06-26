@@ -651,7 +651,7 @@ conf_mat <- confusion_matrix(targets = data_class$transport_mode_POSMO, predicti
 conf_mat
 ```
 
-On our own training dataset, we reached a overall accuracy of ?%. It has to mentioned though, that the accuracy reached depended strongly on the transport mode (figure 6). For ...
+On our own training dataset, we reached a overall accuracy of 91.9%. It has to mentioned though, that the accuracy reached depended strongly on the transport mode. For walks there were the most misclassifications i.e. walk to car (n=5), walk to bus (n=2) and walk to bike (n=7). For a total overview of misclassifications see figure 6.
 
 ```{r, fig.align='center', fig.cap = "*Figure 6: confusion Matrix for the training data*"}
 #| warning: false
@@ -679,7 +679,7 @@ val_conf_mat <- confusion_matrix(targets = val_data_class$transport_mode_POSMO, 
 val_conf_mat
 ```
 
-In the predictive validation with the second dataset, overall accuracy was ?% and hence significantly lower. Looking at the confusion matrix in figure 7, it can be seen, that ....
+In the predictive validation with the second dataset, overall accuracy was 60.9% and hence significantly lower. Looking at the confusion matrix in figure 7, it can be seen, that the most problematic allocations were between tram and bus which means that our method often classified bus as tram drives (n=50). The same happend quite often for cars which tended to be classified as tram (n=21), too. For bus drives our method often classified car (n=26). On the other hand many walks were treated as bus drives (n=17).
 
 ```{r, fig.align='center', fig.cap = "*Figure 7: confusion Matrix for the validation data*"}
 #| warning: false
