@@ -39,7 +39,7 @@ library("cvms")
 
 ## Abstract
 
-With the introduction of smartphones that capture GPS data of their users' locations, the volume of mobility data is continuously growing. One of the challenges in handling mobility data is determining the mode of transportation. Therefore, it is essential to develop methods to efficiently and accurately classify movements. In this study, a rule-based method is applied to  assign the travel mode (Walk, Bike, Car, Bus, Tram, Train, and Boat) to a spatial dataset collected with the POSMO app. Various thresholds based on background layers and movement parameters are applied and the method is evaluated using a dataset which contains manually corrected travel modes. Overall, an accuracy of 60.9% was achieved. Using background information, the classification of train and boat led to convincing results, whereas it did not work well for bus and tram. Here, other criteria need to be added. Further, use of movement parameters have proven to be useful for the distinction of walk, bike and car segments. Overall, this study established a base for travel mode detection procedure and  tough accuracy did not yet fit the standards, the procedure implemented is a promising starting point for further development. 
+With the introduction of smartphones that capture GPS data of their users' locations, the volume of mobility data is continuously growing. One of the challenges in handling mobility data is determining the mode of transportation. Therefore, it is essential to develop methods to efficiently and accurately classify movements. In this study, a rule-based method is applied to  assign the travel mode (Walk, Bike, Car, Bus, Tram, Train, and Boat) to a spatial dataset collected with the POSMO app. Various thresholds based on background layers and movement parameters are applied and the method is evaluated using a dataset which contains manually corrected travel modes. Overall, an accuracy of 60.9% was achieved. Using background information, the classification of train and boat led to convincing results, whereas it did not work well for bus and tram. Here, other criteria need to be added. Further, use of speed and acceleration have proven to be useful for the distinction of walk, bike and car segments. Overall, this study established a base for a travel mode detection procedure and  tough accuracy did not yet fit the standards, the procedure implemented is a promising starting point for further development. 
 
 ## 1 Introduction
 
@@ -58,7 +58,6 @@ Considering POSMO's real-life applications, the ability to distinguish as many t
 ## 2 Material and Methods
 
 ### 2.1 Datasets & Conceptual Model
-
 ```{r}
 #| warning: false
 #| message: false
@@ -135,12 +134,11 @@ Additionally, the swissTLM3D dataset was obtained from swisstopo (2023), whereof
 
 A second POSMO-dataset provided by one of the other students was used for validation (see chapter 2.6). These data were collected over a period of 67 days (11.04-16.06.2023) with a sampling rate of 10s, resulting in a total of 46'305 fixes. It was eventually corrected and validated for travel mode in POSMO as well and the same attributes were analyzed further.
 
-For preprocessing and analyses and visualizing our data we used R (v. 4.2.3; R Core Team, 2023) as well as the package ggplot2 (v. 3.4.2; Wickham, 2016).
+For preprocessing, analyses and visualizing our data we used R (v. 4.2.3; R Core Team, 2023) as well as the package ggplot2 (v. 3.4.2; Wickham, 2016).
 
-Following Laube (2014), the movement space was conceptualized as continuous, 2D, and entity-based. Therefore, all datasets were structured as vector data. We modeled the movement as a series of unconstrained, intermittent, and time-stamped fixes. The app collects GPS data using the Lagrangian perspective with event-based active tracking.
+Following Laube (2014), the movement space was conceptualized as continuous, 2D, and entity-based. Therefore, all datasets were structured as vector data. We modeled the movement as a series of unconstrained, intermittent, time-stamped fixes. The app collects GPS data using the Lagrangian perspective with event-based, active tracking.
 
 ### 2.2 Segmentation & Filtering
-
 ```{r}
 #| warning: false
 #| message: false
@@ -210,7 +208,7 @@ p3 <- data |> #visualize segmentation
   labs(title = "(C) segmentation")
     
     
-data <- data |> #remove short segments (less than 300m)
+data <- data |> #remove short segments (less than 300m or 2min)
   group_by(segment_id) |> 
   mutate(steplength = sqrt((X - lead(X, 1)) ^ 2 + (Y - lead(Y, 1)) ^ 2)) |> 
   filter(sum(steplength, na.rm=T)>300) |> 
@@ -227,7 +225,7 @@ p4 <- data |> #visualize final segments
   labs(title = "(D) filtering short segments")
 ```
 
-In order to assign transport modes to trajectories, the raw data has to be divided into sub-segments representing individual movements first (Wu et al.,2016). An initial segmentation was performed by assigning a new segment ID whenever the time gap between consecutive fixes exceeded double the sampling rate (10s), as the event-based tracking of the POSMO app led to large gaps, which needed to be separated for the further calculations. Then, segmentation was performed following Laube & Purves (2011), were static fixes are classified as those whose average Euclidean distance to other fixes inside a temporal window v is less than some threshold d. We chose 30 seconds (8 fixes) for v and 2 meters for d. Next, sub-segments with a length less than 300m or a time-span of less than 2 minutes were removed as well. The process for a exemplary day is visualized in figure 1. Lastly, segments with a average sinuosity (according to chapter 2.3) greater than 2 were removed as well, as they mostly represented GPS errors, as visible in figure 2. Our resulting dataset contained 295 retained trajectories.
+In order to assign transport modes to trajectories, the raw data has to be divided into sub-segments representing individual movements first (Wu et al.,2016). An initial segmentation was performed by assigning a new segment ID whenever the time gap between consecutive fixes exceeded double the sampling rate (10s), as the event-based tracking of the POSMO app led to large gaps, which needed to be separated for the further calculations. Then, segmentation was performed following Laube & Purves (2011), were static fixes are classified as those whose average Euclidean distance to other fixes inside a temporal window v is less than some threshold d. We chose 30 seconds (8 fixes) for v and 2 meters for d. Next, sub-segments with a length less than 300m or a time-span of less than 2 minutes were removed as well. The process  is visualized for a exemplary day in figure 1. Lastly, segments with a average sinuosity (according to chapter 2.3) greater than 2 were removed as well, as they mostly represented GPS errors, as visible in figure 2. Our resulting dataset contained 295 retained trajectories.
 
 ```{r, fig.height=7, fig.align='center', fig.cap = "*figure 1: segmentation and filtering of trajectories: Raw data (A) was filtered into static and dynamic points (B), then static points were removed and trajectories segmented according to these breaks (C). Last, short segments (<300m or <2min) were removed as well (D)*"}
 #| warning: false
@@ -240,7 +238,6 @@ grid.arrange(p1,p2,p3,p4, nrow=2, ncol=2)
 ```
 
 ### 2.3 Calculating Movment Parameters
-
 ```{r}
 #| warning: false
 #| message: false
@@ -286,7 +283,7 @@ p5 <- data |>
   theme(legend.position = "none")+
   labs(title = "(A) before filtering sinuosity")
     
-data <- data |> #filter out segments with hig sinuosity
+data <- data |> #filter out segments with high sinuosity
   group_by(segment_id) |> 
   filter(mean(sin, na.rm=T)<2) 
 
@@ -302,7 +299,7 @@ p6 <- data |> #plot after filter
     
 ```
 
-According to Sadeghian et al. (2011) the most common and powerful variables for transport mode detection are average speed, maximum speed and acceleration. We computed speed according to Laube & Purves (2011) using three fixes located inside a temporal window w, which was set to 20 seconds. Acceleration was calculated based on the same principle and defined as the change in velocity over the change in time. Sinuosity  was not used in any of the papers in the reviews, but integrated here nonetheless (Sadeghian et al., 2021; Wu et al., 2016). The calculation was based on Laube & Purves (2011) as well, where it is defined as the ratio between a nominal track length and the line connecting the first and last points in the sampling window w consisting of 5 fixes. 
+According to Sadeghian et al. (2011) the most common and powerful variables for transport mode detection are average speed, maximum speed and acceleration. We computed speed according to Laube & Purves (2011) using three fixes located inside a temporal window w, which was set to 20 seconds. Acceleration was calculated based on the same principle and defined as the change in velocity over the change in time. Sinuosity  was not used in any of the papers in the reviews, but integrated here nonetheless (Sadeghian et al., 2021; Wu et al., 2016). The calculation was based on Laube & Purves (2011) as well, where it is defined as the ratio between a nominal track length and the line connecting the first and last points in a sampling window w consisting of 5 fixes. 
 
 ```{r, fig.align='center', fig.cap = "*figure 2: after calculation of the moving parameters, segments with a sinuosity higher than 2 were removed as well, shown here for a examplary day before (A) and after the filtering (B)*"}
 #| warning: false
@@ -329,11 +326,11 @@ data_smry <- data |>
             max_sin = max(sin,na.rm=T),
             min_sin = min(sin,na.rm=T),
             transport_mode_POSMO = levels(transport_mode)[which.max(table(transport_mode))],
-            percentage_tm_POSMO = max(table(transport_mode)) / length(transport_mode) * 100
+            percentage_tm_POSMO = max(table(transport_mode)) / length(transport_mode) * 100 #column with information what %-of fixes were of the most attributed POSMO-travel mode
 )
 
 
-data_smry_long <- pivot_longer(data_smry, #convert from wide to long
+data_smry_long <- pivot_longer(data_smry, #convert from wide to long for visualization
                            cols = -c("segment_id","transport_mode_POSMO", "percentage_tm_POSMO","geometry"),
                            names_to = "parameter") 
 
@@ -361,10 +358,9 @@ ggplot(aes(x=transport_mode_POSMO, y=value, fill=transport_mode_POSMO))+
 
 ```
 
-It can be observed, that most transportation modes show similar patterns, or at least have significant overlaps. Only train trajectories differ considerably from others regarding speed and acceleration. Hence, we have made the decision to approach the transport mode detection by first embedding the trajectories within their geographic context for a better classification.
+It can be observed, that most transportation modes show similar patterns, or at least have large overlaps. Only train trajectories differ considerably from others regarding speed and acceleration. Hence, we have made the decision to approach the transport mode detection by first embedding the trajectories within their geographic context for a better classification.
 
 ### 2.4 Adding Geographic Context
-
 ```{r}
 #| warning: false
 #| message: false
@@ -372,30 +368,32 @@ It can be observed, that most transportation modes show similar patterns, or at 
 ##spatial join: attribute nearest route
 
 background_data <- rbind(roads, rails, boats) #merge the three datasets together
-data <- st_join(data, background_data, join = st_nearest_feature)
+data <- st_join(data, background_data, join = st_nearest_feature) #perform spatial join with nearest feature
 
-data$OBJEKTART <- as.factor(data$OBJEKTART)
+data$OBJEKTART <- as.factor(data$OBJEKTART) #create summary with assignment of nearest feature per segment
 data_smry_context <- data |> 
   group_by(segment_id) |> 
   summarise(
             nearest_route = levels(OBJEKTART)[which.max(table(OBJEKTART))],  
-            percentage_nearest_route = max(table(OBJEKTART)) / length(OBJEKTART) * 100
+            percentage_nearest_route = max(table(OBJEKTART)) / length(OBJEKTART) * 100 
 ) |> 
   as_tibble() |> 
-  select(-c("geometry"))
+  select(-c("geometry")) #spatial context is removed for join afterwards
 ```
 
-According to Gschwend (2015) movement patterns are mostly quantified on the basis of geometric properties and the arrangement of the fixes, while the geographic environment surrounding the movement is often neglected, however would provide useful semantics insights. Hence, using external information can increase the performance of the used algorithms substantially (Sadeghian et al., 2021). As described in chapter 2.1, we used several feature classes of the swissTLM3D dataset and merged all roads, rails and boat-routes into a background layer. Next, a spatial join was performed, attributing every fix of the POSMO data to its nearest feature, as visualized in figure 4 for an exemplary day. Lastly, every segment was assigned the feature, which was attributed to most of the fixes of said segment.
+According to Gschwend (2015) movement patterns are mostly quantified on the basis of geometric properties and the arrangement of the fixes, while the geographic environment surrounding the movement is often neglected, however would provide useful semantics insights. Hence, using external information can increase the performance of the used algorithms substantially (Sadeghian et al., 2021). As described in chapter 2.1, we used several feature classes of the swissTLM3D dataset and merged all roads, rails and boat-routes into a background layer. Next, a spatial join was performed, attributing every fix of the POSMO data to its nearest feature, as visualized for an exemplary day in figure 4. Lastly, every segment was assigned the feature, which was attributed to most of the fixes of said segment.
 
 ```{r, fig.align='center', fig.cap = "*figure 4: the spatial join of the POSMO data (point) to the nearest feature of roads, rails and boats (lines)*"}
 #| warning: false
 #| message: false
 
+##visualization of spatial join
+
 data_01 <- data |> 
   filter(as.Date(datetime) == "2023-04-18") #select example day
 
 bbox <- st_bbox(data_01) #produce a bounding box with that day
-clipped_background <- st_crop(background_data, bbox) #cut backround to that bounding box
+clipped_background <- st_crop(background_data, bbox) #cut background to that bounding box
 
 ggplot()+ #visualize
   geom_sf(data=clipped_background, aes(color=OBJEKTART))+
@@ -428,13 +426,11 @@ data_smry_context <- data_smry_context |>
   
 data_class <- left_join(data_smry, data_smry_context, by = "segment_id")
 
-##export for classification (so swisstlm3d has not to be loaded every time)
 ```
 
 Further, the feature class TLM_HALTESTELLE of swissTLM3D containing bus, train and boat stops was used to compute a buffer of 75 meters around every stop. A spatial join was performed for fixes within these buffers. Next, for every segment the information, if the first and the last point were within a stop-buffer was saved additionally for further analysis. 
 
 ### 2.5 Travel Mode Detection
-
 ```{r}
 #| warning: false
 #| message: false
@@ -458,13 +454,13 @@ data_class <- data_class |>
   )
 ```
 
-Zhang et. al (2012) suggest, first separating non-motorized and motorized vehicles and then split up these sub-categories in a second classification step. However, the moving parameters of our training data seemed not to differ significantly enough to do so. Hence, we decided to use the context information for a first classification. In that way, train (closest to train rails or max speed > 45m/s), tram (closest to tram rails), boat  (closest to boat line or first and last point in boat stop buffer) and bus (first and last stop in bus or train stop buffer) trajectories were classified. This was done step by step, so that trajectories classified as train were not able to be classified again. Accordingly, prediction of car, bike and walk trajectories was left. In order to estimate what thresholds should be applied, these were visualized again (see figure 5). In that way, we decided to classify trajectories with a maximum speed over 12m/s or maximum acceleration over 0.3 m/s^2^ as car segments. Then, segments with a main speed higher than 2m/s or maximal speed over 5m/s were classified as bike rides. And lastly, the remaining segments, which thus had to have a main speed lower than 7km/h were classified as walks.
+Zhang et. al (2012) suggest, first separating non-motorized and motorized vehicles and then split up these sub-categories in a second classification step. However, the moving parameters of our training data seemed not to differ considerably enough to do so. Hence, we decided to use the context information for a first classification. In that way, train (closest to train rails or max speed > 45m/s), tram (closest to tram rails), boat  (closest to boat line or first and last point in boat stop buffer) and bus (first and last stop in bus or train stop buffer) trajectories were classified. This was done step by step, so that trajectories classified once were not able to be classified again. Accordingly, prediction of car, bike and walk trajectories was left. In order to estimate what thresholds should be applied, these were visualized again (see figure 5). In that way, we decided to classify trajectories with a maximum speed over 12m/s or maximum acceleration over 0.3 m/s^2^ as car segments. Then, segments with a main speed higher than 2m/s or maximal speed over 5m/s were classified as bike rides. And lastly, the remaining segments, which thus had to have a main speed lower than 2m/s were classified as walks.
 
 ```{r, fig.align='center', fig.cap = "*Figure 5: exploratory data analysis of the movement parameters acceleration (acc [m/s^2^)]), sinuosity (sin) and speed (speed [m/s]) for car, bike and walk segments, visualized as the maximal (max), minimum (min) and average (mean) value per segment and transport mode*"}
 #| warning: false
 #| message: false
 
-##plot for EDA:
+##plot for EDA filtered for only Car, Bike and Walk:
 
 data_smry_long |> 
   filter(transport_mode_POSMO=="Car" | transport_mode_POSMO =="Bike" | transport_mode_POSMO == "Walk") |> 
@@ -482,21 +478,20 @@ ggplot(aes(x=transport_mode_POSMO, y=value, fill=transport_mode_POSMO))+
 ```
 
 ### 2.6 Validation
-
 ```{r}
 #| warning: false
 #| message: false
 
-#filter out cable car
+##filter out cable car as it was not present in our training data and thus model:
 
 val_data <- val_data |> 
   filter(transport_mode != "Cable_Car")
 
-#whole process for validation dataset:
+###whole process for validation dataset:
 
 ##filtering and segmentation:
       
-val_data <- val_data |> #initial segmentation for time gaps > 10s (double the sampling rate)
+val_data <- val_data |> #initial segmentation for time gaps > 20s (double the sampling rate)
   mutate(
     timelag = as.numeric(difftime(lead(datetime), datetime, units = "secs")), 
     gap = timelag > 20,
@@ -522,15 +517,17 @@ val_data <- val_data |>
     mutate(segment_id = rle_id(static)) |> #assign new segment ID after every break (static points)
     filter(!static) #remove static points
 
-val_data <- val_data |> #remove short segments (less than 300m)
+val_data <- val_data |> #remove short segments (less than 300m or 2min)
   group_by(segment_id) |> 
   mutate(steplength = sqrt((X - lead(X, 1)) ^ 2 + (Y - lead(Y, 1)) ^ 2)) |> 
-  filter(sum(steplength, na.rm=T)>300) 
+  filter(sum(steplength, na.rm=T)>300) |> 
+  filter(sum(timelag, na.rm=T)>120)
+
 
 ##calculate moving parameters:
 
 val_data <- val_data |> 
-  group_by(segment_id) |> #group by segment, so moving window starts for every segment again
+  group_by(segment_id) |> 
   mutate(
     speed = { #distance and time passed is calculated with lag/lead of 1 -> 10s in both directions
       step_minus1 <- sqrt((lag(X, 1) - X) ^ 2 + (lag(Y, 1) - Y) ^ 2)
@@ -560,10 +557,10 @@ val_data <- val_data |>
 
 val_data <- val_data |> #filter out segments with hig sinuosity
   group_by(segment_id) |> 
-  filter(mean(sin, na.rm=T)<2) |> 
-  filter(sum(timelag, na.rm=T)>120)
+  filter(mean(sin, na.rm=T)<2)
 
-##calculate summary:
+##calculate summary of moving parameters:
+
 val_data$transport_mode <- as.factor(val_data$transport_mode)
 val_data_smry <- val_data |> 
   group_by(segment_id) |> 
@@ -581,9 +578,11 @@ val_data_smry <- val_data |>
             percentage_tm_POSMO = max(table(transport_mode)) / length(transport_mode) * 100
 )
 
+##spatial join with nearest feature:
+
 val_data <- st_join(val_data, background_data, join = st_nearest_feature)
 
-val_data$OBJEKTART <- as.factor(val_data$OBJEKTART)
+val_data$OBJEKTART <- as.factor(val_data$OBJEKTART) #save for every segment
 val_data_smry_context <- val_data |> 
   group_by(segment_id) |> 
   summarise(
@@ -599,8 +598,8 @@ val_stop_join <- st_join(val_data, stops_buffer, join = st_within) #spatial join
 
 first_point <- val_stop_join |> # a vector is produced, containing the information for the first point of every segment
   group_by(segment_id) |> 
-  slice_head() |> #first point is chosen
-  pull(stop_type, segment_id) #information about stops is saved
+  slice_head() |> 
+  pull(stop_type, segment_id) 
 
 last_point <- val_stop_join |> #same for last point of every segment
   group_by(segment_id) |> 
@@ -613,6 +612,8 @@ val_data_smry_context <- val_data_smry_context |>
   cbind(first_point, last_point) 
 
 val_data_class <- left_join(val_data_smry, val_data_smry_context, by = "segment_id")
+
+##travel mode classification:
 
 val_data_class$travel_mode_det <- NA
 
@@ -631,35 +632,33 @@ val_data_class <- val_data_class |>
   )
 ```
 
-First, the output of our travel mode detection was compared to the validated POSMO classification and a confusion matrix was rendered. Of course, as our procedure was built up on this data, this was was rather a comparison with the ground truth than a validation. So for a valid predictive validation according to Rykiel (1996), the second dataset was used. As the sampling rate was set at 10s, wherever a temporal window was used, number of fixes were adjusted in order to work with same time-span. As we worked with a window of 30s during the segmentation process, we had to adjust this to 40s here, in order to get a symmetrical window. Ultimately, a confusion matrix was produced again and accuracy of our method was calculated.
+First, the output of our travel mode detection was compared to the validated POSMO classification and a confusion matrix was rendered. Of course, as our procedure was built up on this data, this was was rather a comparison with the ground truth than a validation. So for a valid predictive validation according to Rykiel (1996), the second dataset was used. As the sampling rate was set at 10s, wherever a temporal window was used, number of fixes were adjusted in order to work with the same time-span. As we worked with a window of 30s during the segmentation process, we had to adjust this to 40s here, in order to get a symmetrical window. Ultimately, a confusion matrix was produced again and accuracy of our method was calculated.
 
 ## 3 Results
-
 ```{r}
 #| warning: false
 #| message: false
 #| results: 'hide'
 
-#confusion matrix for training data
-
+##rendering confusion matrix for training data:
 
 conf_mat <- confusion_matrix(targets = data_class$transport_mode_POSMO, predictions = data_class$travel_mode_det)
 conf_mat
 
-#confusion  for validation data
+##rendering confusion matrix for validation data:
 
 
 val_conf_mat <- confusion_matrix(targets = val_data_class$transport_mode_POSMO, predictions = val_data_class$travel_mode_det)
 val_conf_mat
 ```
 
-On our own training dataset, we reached a overall accuracy of 91.9% (figure 6). In the predictive validation with the second dataset, overall accuracy was 60.9% and hence considerably lower. Looking at the confusion matrix in figure 7, it can be seen, that the most problematic allocations were between tram and bus which means that our method frequently classified bus as tram drives (n=50). The same happened often for cars which tended to be classified as tram (n=21), too. For bus drives our method repeatedly classified car (n=26). On the other hand many walks were treated as bus drives (n=17).
+On our own training dataset, we reached a overall accuracy of 91.9% (figure 6). In the predictive validation with the second dataset, overall accuracy was 60.9% and hence considerably lower. Looking at the confusion matrix in figure 7, it can be seen, that the most problematic allocations were between tram and bus, as our method frequently classified bus as tram drives (n=50). The same happened often for cars which tended to be classified as tram (n=21) too. For bus drives our method repeatedly classified car (n=26). On the other hand many walks were treated as bus drives (n=17).
 
 ```{r, fig.align='center', fig.cap = "*figure 6: confusion matrix for the training data*"}
 #| warning: false
 #| message: false
 
-#plot confusion matrix
+##plot confusion matrix for training data:
 
 plot_confusion_matrix(conf_mat$`Confusion Matrix`[[1]], 
                       add_normalized = FALSE,
@@ -673,7 +672,7 @@ plot_confusion_matrix(conf_mat$`Confusion Matrix`[[1]],
 #| warning: false
 #| message: false
 
-#plot confusion matrix
+##plot confusion matrix for validation data:
 
 plot_confusion_matrix(val_conf_mat$`Confusion Matrix`[[1]], 
                       add_normalized = FALSE,
@@ -690,15 +689,15 @@ The accuracy of our travel mode detection procedure in the predictive validation
 
 First, many car or bus journeys were mistakenly classified as tram rides. This may be explained by the fact that tram rails are located on streets also used by cars and buses. Consequently, these trips were allocated to the tram rail as well, resulting in incorrect classification. However, figure 8 shows that the incorrectly classified tram rides had remarkably fewer fixes per segment attributed with tram rails as the nearest feature. Hence, to address this issue, we suggest implementing a threshold. For instance, only segments where 50% of all fixes are closest to a tram rail could be classified as tram rides.
 
-```{r, fig.align='center', fig.cap = "*figure 8: segments correctly or incorrectly classified as tram by number of fixes attributed to tram rails as nearest feature*"}
+```{r, fig.align='center', fig.cap = "*figure 8: segments of the validation dataset correctly or incorrectly classified as tram by number of fixes attributed to tram rails as nearest feature*"}
 #| warning: false
 #| message: false
 
 
-val_data_class <- val_data_class |> 
+val_data_class <- val_data_class |> #add column with TRUE/FALSE for correct classification
   mutate(test = ifelse(transport_mode_POSMO == travel_mode_det, TRUE, FALSE ))
 
-val_data_class |> 
+val_data_class |> #visualizie tram classification by number of fixes attributed
   filter(travel_mode_det == "Tram") |> 
   ggplot(aes(x=test, y=percentage_nearest_route, fill=test))+
   geom_boxplot()+  
@@ -708,17 +707,17 @@ val_data_class |>
 
 ```
 
-Second, the classification of bus rides was poorly. The method of creating a buffer around bus stops thus did not work yet. Alternative approaches could involve using the actual bus network data and similarity measures, but these would require additional computational power again. On the other hand, the current method could be improved by adjusting the buffer size or enhancing the segmentation process. It is crucial to highlight the importance of pre-processing in travel mode detection. Accurate detection relies on segmentation producing trajectories that represent individual movements with the same travel mode and precise defined start and ending points (Wu et al., 2016).This is evident in figure 3, were many walking segments have velocities higher than what would be possible in reality. This is explained by movements transition directly from one to another mode, without static phase, leading to incorrect segmentation (see figure 9)
+Second, the classification of bus rides was poorly. The method of creating a buffer around bus stops thus did not work yet. Alternative approaches could involve using the actual bus network data and similarity measures, but these would require additional computational power again. On the other hand, the current method could be improved by adjusting the buffer size or enhancing the segmentation process. It is crucial to highlight the importance of pre-processing in travel mode detection. Accurate detection relies on segmentation producing trajectories that represent individual movements with the same travel mode and precise defined start and ending points (Wu et al., 2016). This becomes evident in figure 3, were many walking segments have velocities higher than what would be possible in reality. That can be explained by movements transition directly from one to another mode, without static phase, leading to incorrect segmentation (see figure 9)
 
 In addition it has to be mentioned, that the temporal granularity plays a crucial role when calculating moving parameters, as described in Laube & Purves (2011). Conducting sensitivity analyses and simulations would be necessary to determine the appropriate granularity for the purpose here, while we only made first assumptions in this study.
 
-```{r, fig.align='center', fig.cap = "*figure 9: segment 352 by manually validated transport mode: the transition from walk to bus did not lead to a segmentation during pre-processing*"}
+```{r, fig.align='center', fig.cap = "*figure 9: segment 352 (classified as walk) of the training data by manually validated transport mode: the transition from walk to bus did not lead to a segmentation during pre-processing*"}
 #| warning: false
 #| message: false
 
-data |> #plot after filter
-  filter(segment_id == "352") |>
-  ggplot(aes(X, Y))+ 
+data |> 
+  filter(segment_id == "352") |> #filter for a segment with a high max. speed classified as walking
+  ggplot(aes(X, Y))+ #plot it by transport_mode
   geom_path()+
   geom_point(aes(color=transport_mode))+
   coord_equal() +
